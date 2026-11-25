@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<!--APP-START-->
+<title>Postcard Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: the whole program is a riso-printed postcard on a work table.
+   Centre hairlines, corner labels in tiny monospace caps, one blue "sun". */
+:root {
+  --paper: #E9E3D6;
+  --paper-light: #F1ECE2;
+  --paper-deep: #DCD3C1;
+  --ink: #1F1D1B;
+  --ink-soft: rgba(31, 29, 27, .62);
+  --hair: rgba(31, 29, 27, .26);
+  --riso-blue: #2F5E9E;
+  --riso-pink: #DE6680;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .12  0 0 0 0 .11  0 0 0 0 .1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.38'/></svg>");
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  background-image: var(--grain);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+/* fixed table guides: centre vertical hairline */
+body::after {
+  content: ""; position: fixed; top: 0; bottom: 0; left: 50%; width: 1px;
+  background: var(--hair); pointer-events: none; z-index: 0;
+}
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 1200px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+.mono { font-family: var(--mono); }
+.cap {
+  font-family: var(--mono); text-transform: uppercase;
+  letter-spacing: .2em; font-size: 11px; line-height: 1.7;
+}
+
+/* ---------- header ---------- */
+.bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-block: 22px 14px; border-bottom: 1px solid var(--ink);
+  position: relative;
+}
+.brand { display: flex; align-items: baseline; gap: 14px; }
+.brand b { font-family: var(--mono); font-weight: 500; font-size: 17px; letter-spacing: .14em; }
+.brand .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--riso-blue); display: inline-block; transform: translateY(1px); }
+.bar .meta { display: flex; gap: 22px; text-align: right; }
+.bar .meta span { white-space: nowrap; }
+@media (max-width: 640px) { .bar .meta .hide-sm { display: none; } }
+
+/* ---------- postcard frame (shared by all screens) ---------- */
+.card {
+  position: relative; width: 100%; max-width: 100%;
+  aspect-ratio: 3 / 2;
+  background: var(--paper-light);
+  background-image: var(--grain);
+  box-shadow: 0 1px 0 rgba(31,29,27,.08), 0 18px 40px -22px rgba(31,29,27,.45);
+  overflow: hidden;
+}
+.card .g-v, .card .g-h { position: absolute; background: var(--hair); }
+.card .g-v { left: 50%; top: 5%; bottom: 5%; width: 1px; }
+.card .g-h { top: 52%; left: 5%; right: 5%; height: 1px; }
+.card .plus { position: absolute; width: 14px; height: 14px; transform: translate(-50%, -50%); }
+.card .plus::before, .card .plus::after { content: ""; position: absolute; background: var(--ink); }
+.card .plus::before { left: 6.5px; top: 0; bottom: 0; width: 1px; }
+.card .plus::after { top: 6.5px; left: 0; right: 0; height: 1px; }
+.corner { position: absolute; font-family: var(--mono); text-transform: uppercase; letter-spacing: .22em; font-size: clamp(8px, 1.05vw, 11px); line-height: 1.75; }
+.corner.tl { left: 5%; top: 7%; }
+.corner.tr { right: 5%; top: 7%; text-align: right; }
+.corner.bl { left: 5%; bottom: 7%; }
+.corner.br { right: 5%; bottom: 7%; text-align: right; }
+.corner .rule { display: block; width: 28px; height: 1px; background: var(--ink); margin: 6px 0; }
+.corner.tr .rule, .corner.br .rule { margin-left: auto; }
+.card svg.art { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ---------- intake ---------- */
+.intro {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px;
+  padding-block: 36px 26px; align-items: end;
+}
+.intro h1 {
+  margin: 0; font-family: var(--mono); font-weight: 400;
+  font-size: clamp(26px, 4.2vw, 46px); line-height: 1.08; letter-spacing: -.01em; text-wrap: balance;
+}
+.intro h1 em { font-style: normal; color: var(--riso-blue); }
+.intro p { margin: 0; max-width: 46ch; color: var(--ink-soft); }
+@media (max-width: 760px) { .intro { grid-template-columns: 1fr; gap: 14px; } }
+
+.drop { cursor: pointer; transition: transform .25s ease; }
+.drop:focus-visible { outline: 2px solid var(--riso-blue); outline-offset: 4px; }
+.drop.over { transform: translateY(-4px) rotate(-.4deg); }
+.drop.over .sun { transform: translate(-50%, -50%) scale(1.06); }
+.drop .sun {
+  position: absolute; left: 61%; top: 37%; width: 24%; aspect-ratio: 1; border-radius: 50%;
+  background: var(--riso-blue); transform: translate(-50%, -50%); transition: transform .4s ease;
+  mix-blend-mode: multiply; opacity: .92;
+}
+.drop .sun::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background-image: var(--grain); opacity: .9; }
+.drop .center {
+  position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%);
+  display: grid; justify-items: center; gap: 12px; text-align: center; width: min(78%, 420px);
+}
+.drop .center .ko { font-size: clamp(14px, 1.9vw, 19px); font-weight: 500; background: var(--paper-light); padding: 2px 8px; }
+.drop .center .sub { font-size: 12px; color: var(--ink-soft); background: var(--paper-light); padding: 0 6px; }
+@media (max-width: 520px) { .drop .center .sub { display: none; } }
+
+.btn {
+  font-family: var(--mono); text-transform: uppercase; letter-spacing: .18em; font-size: 12px;
+  padding: 11px 18px; border: 1.5px solid var(--ink); background: var(--paper-light); color: var(--ink);
+  cursor: pointer; border-radius: 0; transition: box-shadow .15s ease, transform .15s ease;
+  display: inline-flex; align-items: center; gap: 10px; white-space: nowrap;
+}
+.btn:hover { box-shadow: 3px 3px 0 var(--riso-blue); transform: translate(-1px, -1px); }
+.btn:active { box-shadow: none; transform: none; }
+.btn:focus-visible { outline: 2px solid var(--riso-blue); outline-offset: 3px; }
+.btn.solid { background: var(--ink); color: var(--paper-light); }
+.btn.solid:hover { box-shadow: 3px 3px 0 var(--riso-pink); }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+
+.illo-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 18px; }
+.steps {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0;
+  margin-top: 26px; border-top: 1px solid var(--ink);
+}
+.steps div { padding: 12px 14px 0 0; border-right: 1px solid var(--hair); padding-left: 14px; }
+.steps div:first-child { padding-left: 0; }
+.steps div:last-child { border-right: 0; }
+.steps b { display: block; font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .18em; }
+.steps span { font-size: 13px; color: var(--ink-soft); }
+@media (max-width: 640px) { .steps { grid-template-columns: 1fr 1fr; row-gap: 14px; } .steps div:nth-child(2) { border-right: 0; } .steps div:nth-child(3) { padding-left: 0; } }
+
+/* ---------- loading ---------- */
+.loading-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; padding-block: 30px 18px; flex-wrap: wrap; }
+.loading-head h2 { margin: 0; font-family: var(--mono); font-weight: 400; font-size: clamp(20px, 3vw, 30px); }
+#scanPhoto { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); max-width: 46%; max-height: 64%; filter: grayscale(1) contrast(1.35); mix-blend-mode: multiply; opacity: .28; transition: opacity .6s ease, filter .6s ease; }
+.card.loading .scan { position: absolute; left: 5%; right: 5%; height: 2px; background: var(--riso-pink); mix-blend-mode: multiply; top: 10%; animation: scan 2.4s cubic-bezier(.6,.0,.4,1) infinite alternate; }
+@keyframes scan { to { top: 88%; } }
+.card.loading circle.draw { stroke-dasharray: 1600; stroke-dashoffset: 1600; animation: draw 3.2s ease-in-out infinite; }
+@keyframes draw { 50% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -1600; } }
+.card.loading .lsun { position: absolute; left: 58%; top: 36%; width: 22%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); background: var(--riso-blue); mix-blend-mode: multiply; opacity: .85; transition: background .8s ease; animation: breathe 2.6s ease-in-out infinite; }
+.card.loading .lsun::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background-image: var(--grain); }
+@keyframes breathe { 50% { transform: translate(-50%, -50%) scale(.92); } }
+.card.loading .orbit { position: absolute; left: 50%; top: 52%; width: 9px; height: 9px; margin: -4.5px; border-radius: 50%; background: var(--ink); animation: orbit 3.2s linear infinite; }
+@keyframes orbit { from { transform: rotate(0deg) translateX(min(26vw, 300px)); } to { transform: rotate(360deg) translateX(min(26vw, 300px)); } }
+.log { list-style: none; margin: 0; padding: 0; }
+.log li { opacity: .35; transition: opacity .3s; white-space: nowrap; }
+.log li.on { opacity: 1; }
+.log li.on::after { content: "▮"; margin-left: 6px; animation: blink 1s steps(1) infinite; }
+.log li.done { opacity: .75; }
+.log li.done::before { content: "✓ "; }
+@keyframes blink { 50% { opacity: 0; } }
+.pct { font-family: var(--mono); font-size: clamp(22px, 4vw, 44px); font-weight: 300; letter-spacing: 0; line-height: 1; text-transform: none; }
+.swatches { display: flex; gap: 8px; }
+.swatches i { width: 14px; height: 14px; display: block; background: transparent; border: 1px solid var(--hair); transition: background .6s ease, border-color .6s; }
+.loading-foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+.note { font-size: 13px; color: var(--ink-soft); max-width: 62ch; }
+@media (max-width: 560px) { .card.loading .log li:not(.on) { display: none; } #scanPhoto { max-height: 52%; } }
+
+/* ---------- result ---------- */
+.result-grid { display: grid; grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr); gap: 32px; padding-block: 30px 0; align-items: start; }
+@media (max-width: 900px) { .result-grid { grid-template-columns: 1fr; } }
+#out { width: 100%; height: auto; display: block; aspect-ratio: 3/2; box-shadow: 0 1px 0 rgba(31,29,27,.08), 0 22px 44px -24px rgba(31,29,27,.5); background: var(--paper-light); }
+.out-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.panel { border-top: 1.5px solid var(--ink); }
+.panel h3 { margin: 0; padding-block: 12px; font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; display: flex; justify-content: space-between; border-bottom: 1px solid var(--hair); }
+.field { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; align-items: center; padding-block: 9px; border-bottom: 1px solid var(--hair); }
+.field label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-soft); }
+.field input[type=text] { width: 100%; min-width: 0; border: 0; background: transparent; font-family: var(--mono); font-size: 13px; color: var(--ink); text-transform: uppercase; letter-spacing: .08em; padding: 4px 0; border-bottom: 1px dashed transparent; }
+.field input[type=text]:focus { outline: none; border-bottom-color: var(--riso-blue); }
+.field input[type=range] { width: 100%; accent-color: var(--ink); }
+.field input[type=password] { width: 100%; min-width: 0; border: 0; border-bottom: 1px dashed var(--hair); background: transparent; font-family: var(--mono); font-size: 12px; padding: 4px 0; }
+.field input[type=password]:focus { outline: none; border-bottom-color: var(--riso-blue); }
+.panel .actions { display: flex; flex-wrap: wrap; gap: 10px; padding-block: 16px; }
+.reading { font-size: 13px; color: var(--ink-soft); padding-block: 12px; border-bottom: 1px solid var(--hair); }
+.reading b { color: var(--ink); font-weight: 500; }
+.chip { display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; padding: 2px 8px; border: 1px solid var(--ink); margin-right: 6px; }
+.chip.blue { background: var(--riso-blue); border-color: var(--riso-blue); color: var(--paper-light); }
+details.engine { border-bottom: 1px solid var(--hair); }
+details.engine summary { cursor: pointer; padding-block: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; list-style: none; }
+details.engine summary::before { content: "+ "; }
+details.engine[open] summary::before { content: "– "; }
+details.engine p { margin: 0 0 10px; font-size: 13px; color: var(--ink-soft); }
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper-light); font-family: var(--mono); font-size: 12px; letter-spacing: .12em; padding: 10px 16px; z-index: 20; max-width: calc(100% - 32px); }
+.err { color: #A1302E; }
+footer.colophon { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--ink); margin-top: 44px; padding-top: 12px; color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <header class="bar">
+    <div class="brand"><span class="dot" aria-hidden="true"></span><b>POSTCARD&nbsp;LAB</b></div>
+    <div class="meta cap">
+      <span class="hide-sm">RISO / GEOMETRIC</span>
+      <span class="hide-sm">3 : 2 · 1800 × 1200</span>
+      <span>Nº <span id="hdrNo">01</span></span>
+    </div>
+  </header>
+
+  <!-- ============ 01 INTAKE ============ -->
+  <section id="intake" aria-labelledby="t-intake">
+    <div class="intro">
+      <h1 id="t-intake">사진 한 장을<br><em>기하학 엽서</em>로.</h1>
+      <p>사진을 올리면 주인공만 남기고 원, 반원, 삼각형, 사각형으로 다시 그려서 늘 같은 레이아웃의 리소 엽서로 찍어 냅니다. 색은 사진에서 3~4개만 뽑아 씁니다.</p>
+    </div>
+
+    <div class="card drop" id="drop" tabindex="0" role="button" aria-label="사진 선택 또는 끌어다 놓기">
+      <div class="g-v"></div><div class="g-h"></div>
+      <svg class="art" viewBox="0 0 1800 1200" aria-hidden="true">
+        <circle cx="900" cy="624" r="430" fill="none" stroke="#1F1D1B" stroke-opacity=".5" stroke-width="2"/>
+        <circle cx="1214" cy="392" r="8" fill="#1F1D1B"/>
+        <circle cx="560" cy="890" r="8" fill="#1F1D1B"/>
+      </svg>
+      <div class="sun" aria-hidden="true"></div>
+      <span class="plus" style="left:5%;top:52%"></span>
+      <span class="plus" style="left:95%;top:52%"></span>
+      <div class="corner tl">Your series / <span class="js-no">01</span><span class="rule"></span></div>
+      <div class="corner tr">Place unknown<br>00.0000° N<br>00.0000° E</div>
+      <div class="corner bl"><span class="rule"></span>Drop<br>a photo<br>here</div>
+      <div class="corner br">A / <span class="js-no">01</span><span class="rule"></span><span class="js-year">2026</span></div>
+      <div class="center">
+        <span class="ko">사진을 여기에 놓아 주세요</span>
+        <span class="btn solid" aria-hidden="true">사진 선택</span>
+        <span class="sub">JPG · PNG · WEBP. 주인공이 또렷한 사진일수록 좋아요.</span>
+      </div>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+    <input type="file" id="fileIllo" accept="image/png,image/jpeg,image/webp" hidden>
+    <div class="illo-row">
+      <span class="note">ChatGPT, 코덱스, 피그마에서 이미 그린 일러스트가 있나요?</span>
+      <button class="btn" id="bIllo" type="button">일러스트로 엽서 완성</button>
+    </div>
+    <p id="intakeErr" class="note err" hidden></p>
+
+    <div class="steps" aria-label="만드는 순서">
+      <div><b>01 UPLOAD</b><span>사진 한 장을 올려요</span></div>
+      <div><b>02 READ</b><span>주인공과 색을 읽어요</span></div>
+      <div><b>03 BUILD</b><span>도형으로 다시 그려요</span></div>
+      <div><b>04 PRINT</b><span>리소 질감으로 찍어 내요</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 02 LOADING ============ -->
+  <section id="loading" hidden aria-live="polite">
+    <div class="loading-head">
+      <h2>엽서를 찍고 있어요</h2>
+      <span class="cap" id="elapsed">00:00</span>
+    </div>
+    <div class="card loading" id="loadCard">
+      <div class="g-v"></div><div class="g-h"></div>
+      <img id="scanPhoto" alt="">
+      <div class="lsun" id="lsun"></div>
+      <svg class="art" viewBox="0 0 1800 1200" aria-hidden="true">
+        <circle class="draw" cx="900" cy="624" r="300" fill="none" stroke="#1F1D1B" stroke-width="2"/>
+      </svg>
+      <div class="orbit" aria-hidden="true"></div>
+      <div class="scan" aria-hidden="true"></div>
+      <span class="plus" style="left:5%;top:52%"></span>
+      <span class="plus" style="left:95%;top:52%"></span>
+      <div class="corner tl">Printing / <span class="js-no">01</span><span class="rule"></span></div>
+      <div class="corner tr" id="loadPlace">Reading<br>location…</div>
+      <div class="corner bl"><span class="rule"></span>
+        <ul class="log" id="log">
+          <li data-k="read">01 Reading photo</li>
+          <li data-k="look">02 Studying the subject</li>
+          <li data-k="cut">03 Drawing in shapes</li>
+          <li data-k="pal">04 Mixing ink</li>
+          <li data-k="geo">05 Composing card</li>
+          <li data-k="print">06 Printing riso</li>
+        </ul>
+      </div>
+      <div class="corner br"><span class="pct" id="pct">0%</span><span class="rule"></span>A / <span class="js-no">01</span></div>
+    </div>
+    <div class="loading-foot">
+      <div class="swatches" id="loadSw" aria-label="추출한 색"><i></i><i></i><i></i><i></i></div>
+      <span class="note" id="loadNote">사진은 이 브라우저 안에서만 처리돼요.</span>
+    </div>
+  </section>
+
+  <!-- ============ 03 RESULT ============ -->
+  <section id="result" hidden>
+    <div class="result-grid">
+      <div>
+        <canvas id="out" width="1800" height="1200" aria-label="완성된 엽서"></canvas>
+        <div class="out-foot">
+          <span class="cap" id="outMeta">A / 01</span>
+          <div class="swatches" id="outSw"></div>
+        </div>
+      </div>
+      <aside class="panel" aria-label="엽서 정보">
+        <h3><span>Card spec</span><span>Nº <span class="js-no">01</span></span></h3>
+        <div class="reading" id="reading"></div>
+        <div class="field"><label for="fSeries">Series</label><input type="text" id="fSeries" maxlength="22"></div>
+        <div class="field"><label for="fPlace">Place</label><input type="text" id="fPlace" maxlength="22"></div>
+        <div class="field"><label for="fCoord">Coords</label><input type="text" id="fCoord" maxlength="40"></div>
+        <div class="field"><label for="fWords">Words</label><input type="text" id="fWords" maxlength="48" placeholder="MOTION, NATURE, BALANCE"></div>
+        <div class="field"><label for="fYear">Year</label><input type="text" id="fYear" maxlength="8"></div>
+        <div class="field"><label for="fDensity">Detail</label><input type="range" id="fDensity" min="12" max="36" step="1" value="20"></div>
+        <div class="field"><label for="fCut">Cut-out</label><input type="range" id="fCut" min="0.6" max="1.6" step="0.05" value="1"></div>
+        <div class="actions">
+          <button class="btn solid" id="bSave" type="button">PNG 저장</button>
+          <button class="btn" id="bVary" type="button">다시 그리기</button>
+          <button class="btn" id="bNew" type="button">다른 사진</button>
+        </div>
+        <details class="engine">
+          <summary>AI illustration engine</summary>
+          <p>지금은 브라우저 안의 도형 엔진이 그림을 그려요. OpenAI 이미지 API 키를 넣으면 주인공 그림만 AI가 그리고, 레이아웃은 그대로 유지돼요. 키는 이 브라우저에만 저장돼요.</p>
+          <div class="field"><label for="fKey">API key</label><input type="password" id="fKey" placeholder="sk-…" autocomplete="off"></div>
+          <p id="keyNote"></p>
+        </details>
+      </aside>
+    </div>
+  </section>
+
+  <footer class="colophon cap">
+    <span>Postcard Lab · prototype</span>
+    <span id="engineLabel">Engine: local geometry</span>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   Postcard Lab
+   - Pipeline: read photo → (optional) Claude reads the scene → cut out
+     subject → palette → geometric rebuild → fixed riso template.
+   - The template (paper, guides, sun, text, swatches) is drawn by code,
+     so the layout is identical on every card.
+   ===================================================================== */
+const W = 1800, H = 1200;
+const INK = [31, 29, 27];
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("pclab:" + k); return v == null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("pclab:" + k, v); } catch (e) {} }
+};
+
+/* ---------- small utils ---------- */
+function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 100000) / 100000; }; }
+function hash2(x, y, s) { let h = (x * 374761393 + y * 668265263 + s * 2246822519) >>> 0; h = (h ^ (h >>> 13)) * 1274126177 >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const hex = (c) => "#" + c.map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, "0")).join("");
+const rgbStr = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+function dist2(a, b) { const dr = a[0] - b[0], dg = a[1] - b[1], db = a[2] - b[2]; return 2 * dr * dr + 4 * dg * dg + 3 * db * db; }
+function lum(c) { return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255; }
+function rgb2hsl([r, g, b]) {
+  r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let h = 0, s = 0; const l = (mx + mn) / 2;
+  if (mx !== mn) { const d = mx - mn; s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; }
+  return [h, s, l];
+}
+function hsl2rgb([h, s, l]) {
+  if (s === 0) return [l * 255, l * 255, l * 255];
+  const q = l < .5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const f = (t) => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < .5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+}
+function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+
+/* k-means on an array of [r,g,b] samples */
+function kmeans(samples, k, iters = 10, seed = 7) {
+  const r = rng(seed); if (!samples.length) return { centers: [], counts: [] };
+  let centers = [samples[Math.floor(r() * samples.length)].slice()];
+  while (centers.length < k) { // k-means++ seeding
+    let best = null, bd = -1;
+    for (let t = 0; t < 24; t++) { const c = samples[Math.floor(r() * samples.length)]; const d = Math.min(...centers.map((m) => dist2(m, c))); if (d > bd) { bd = d; best = c; } }
+    centers.push(best.slice());
+  }
+  let counts = new Array(k).fill(0);
+  for (let it = 0; it < iters; it++) {
+    const sum = centers.map(() => [0, 0, 0]); counts = new Array(k).fill(0);
+    for (const s of samples) { let bi = 0, bd = Infinity; for (let j = 0; j < k; j++) { const d = dist2(s, centers[j]); if (d < bd) { bd = d; bi = j; } } sum[bi][0] += s[0]; sum[bi][1] += s[1]; sum[bi][2] += s[2]; counts[bi]++; }
+    centers = centers.map((c, j) => counts[j] ? [sum[j][0] / counts[j], sum[j][1] / counts[j], sum[j][2] / counts[j]] : c);
+  }
+  return { centers, counts };
+}
+function nearest(c, list) { let bi = 0, bd = Infinity; for (let j = 0; j < list.length; j++) { const d = dist2(c, list[j]); if (d < bd) { bd = d; bi = j; } } return [bi, bd]; }
+
+/* ---------- 01 read photo ---------- */
+async function loadImage(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image(); img.decoding = "async"; img.src = url;
+  try { await img.decode(); } catch (e) { throw new Error("decode"); }
+  return { img, url };
+}
+async function readExif(file) {
+  const out = {};
+  if (!window.exifr) return out;
+  try { const g = await exifr.gps(file); if (g && isFinite(g.latitude)) { out.lat = g.latitude; out.lon = g.longitude; } } catch (e) {}
+  try { const d = await exifr.parse(file, ["DateTimeOriginal", "CreateDate"]); const t = d && (d.DateTimeOriginal || d.CreateDate); if (t instanceof Date) out.year = t.getFullYear(); } catch (e) {}
+  return out;
+}
+function workPixels(img, maxSide) {
+  const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(8, Math.round(img.naturalWidth * s)), h = Math.max(8, Math.round(img.naturalHeight * s));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
+  return { w, h, data: x.getImageData(0, 0, w, h).data };
+}
+
+/* ---------- 02 Claude reads the scene (optional, only inside claude.ai) ---------- */
+const LANDMARKS = ["none", "mountain", "pyramid", "waves", "tree", "palm", "tower", "arch", "city"];
+/* Claude draws the subject itself as flat geometric vector shapes (the main engine inside claude.ai) */
+const WHITE_INK = [250, 247, 240];
+async function getSample() {
+  if (!window.claude || typeof window.claude.use !== "function") return null;
+  try { return await Promise.race([window.claude.use("sample"), sleep(8000).then(() => null)]); } catch (e) { return null; }
+}
+async function photoBlob(img, max) {
+  const c = document.createElement("canvas"); const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  return new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
+}
+const DRAW_PROMPT = `You are a modernist illustrator turning this photo into the hero illustration of a riso-printed geometric postcard.
+
+Reply with JSON only (no prose, no code fences):
+{"subject":"animal|person|vehicle|object|building|plant",
+ "subject_name":"one english word",
+ "landmark":"none|mountain|pyramid|waves|tree|palm|tower|arch|city",
+ "place":"short english place name if clearly recognisable, else empty",
+ "series":"2-3 word english series title, evocative, no brand names",
+ "scene_words":["WORD","WORD","WORD"],
+ "sun":"#hex",
+ "inks":["#hex","#hex","#hex"],
+ "svg":"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'>...</svg>"}
+
+THE STYLE (follow every rule):
+1. What to draw: the main subject, plus AT MOST one object it is touching or framed by, when that object explains the scene (the branch a bird sits on, the window ledge a cat lies on, the chair a person sits in). Draw that object as a few plain flat shapes (bars, a rounded frame, a simple curve), never as a detailed scene. Everything else in the photo is dropped: sky, walls, bed, floor, grass, blur, trees in the distance. The subject floats on empty paper.
+2. How to build the subject: decompose it into big flat geometric planes. Torso, head and haunches are large circles, half circles and quarter circles; legs, arms and tails are tapered rectangles or long arcs; ears, beaks, noses are triangles; paws are small half circles. Split each big body part into 2 or 3 flat tone planes (light side / shadow side) with one straight or arc-shaped cut, like cut paper. 30 to 90 shapes. Big shapes first, details on top. No outlines, no gradients.
+3. Keep the real pose, proportions and silhouette, so the subject is instantly recognisable (a cat lying down must read as a cat lying down, curled body, head resting, paws forward). Fill most of the 1000x1000 box, centred.
+4. Colour: only the subject's REAL colours, simplified to 2-4 flat inks, plus near-black #1F1D1B. White subjects stay white: use #FAF7F0 for white areas and a soft warm grey (around #CFC6B8) for their shadow planes, with dark details (eyes, nose, inner ears) for contrast. Put the inks you used in "inks", lightest first, without the black.
+5. Eyes: animals keep simple eyes (a dark circle with a tiny light dot, or closed eyes as a short dark arc made from a thin crescent shape if the eyes are closed in the photo). A small triangle nose. People are faceless flat silhouettes: no eyes, nose or mouth; hair and head are one shape.
+6. "sun": the colour of the light or sky that surrounds the subject in the photo (sunset pink, sky blue, warm gold, window teal), softened to a riso tone. It is printed as one big circle behind the subject, so it must contrast with the subject.
+7. "landmark": only if the photo has a strong place symbol (mountain, pyramid, sea, palm, tower...), else "none". It is drawn by the template, not by you.
+8. No text, letters, numbers or brand logos.
+9. SVG: allowed elements svg, g, circle, ellipse, rect, polygon, path only; attributes viewBox, xmlns, cx, cy, r, rx, ry, x, y, width, height, points, d, fill, opacity, transform only. Path commands M L H V A C Q Z.
+10. scene_words: 3 or 4 single uppercase english words about mood, like "TWO SOULS / ONE SUNLIGHT" style ideas but one word each.`;
+async function claudeDraw(img, onStage) {
+  const sample = await getSample(); if (!sample) return null;
+  const blob = await photoBlob(img, 1024);
+  const stage2 = setTimeout(() => onStage && onStage(), 9000);
+  try {
+    const ask = sample.json(DRAW_PROMPT, { images: [blob], modelTier: "default" });
+    const res = await Promise.race([ask, sleep(180000).then(() => { throw { code: "timeout" }; })]);
+    const reading = sanitizeReading(res); if (!reading || !res || typeof res.svg !== "string") return null;
+    const canvas = await rasterizeSvg(res.svg); if (!canvas) return null;
+    const col = (v) => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v.trim()) ? hexToRgb(v.trim()) : null;
+    reading.sun = col(res.sun); reading.inks = Array.isArray(res.inks) ? res.inks.map(col).filter(Boolean).slice(0, 3) : [];
+    return { reading, canvas };
+  } finally { clearTimeout(stage2); }
+}
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+const SVG_TAGS = new Set(["svg", "g", "circle", "ellipse", "rect", "polygon", "path"]);
+const SVG_ATTRS = new Set(["viewBox", "xmlns", "cx", "cy", "r", "rx", "ry", "x", "y", "width", "height", "points", "d", "fill", "opacity", "transform", "fill-rule"]);
+function cleanSvg(text) {
+  const doc = new DOMParser().parseFromString(text.trim(), "image/svg+xml");
+  const root = doc.documentElement; if (!root || root.nodeName !== "svg" || doc.querySelector("parsererror")) return null;
+  const walk = (el) => {
+    [...el.children].forEach((ch) => { if (!SVG_TAGS.has(ch.nodeName)) ch.remove(); else walk(ch); });
+    [...el.attributes].forEach((a) => {
+      const ok = SVG_ATTRS.has(a.name) && !/url\(|javascript:|expression/i.test(a.value) && (a.name !== "fill" || /^(#[0-9a-f]{3,8}|none|black|white)$/i.test(a.value.trim()));
+      if (!ok) el.removeAttribute(a.name);
+    });
+  };
+  walk(root);
+  root.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  if (!root.getAttribute("viewBox")) root.setAttribute("viewBox", "0 0 1000 1000");
+  root.setAttribute("width", "1000"); root.setAttribute("height", "1000");
+  if (root.querySelectorAll("circle,ellipse,rect,polygon,path").length < 4) return null;
+  return new XMLSerializer().serializeToString(root);
+}
+async function rasterizeSvg(text) {
+  const clean = cleanSvg(text); if (!clean) return null;
+  const url = URL.createObjectURL(new Blob([clean], { type: "image/svg+xml" }));
+  try {
+    const im = new Image(); im.src = url; await im.decode();
+    const c = document.createElement("canvas"); c.width = 1400; c.height = 1400; c.getContext("2d").drawImage(im, 0, 0, 1400, 1400);
+    return trimAlpha(c);
+  } catch (e) { return null; } finally { URL.revokeObjectURL(url); }
+}
+function trimAlpha(c) {
+  const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < c.height; y += 2) for (let i = 0; i < c.width; i += 2) if (d[(y * c.width + i) * 4 + 3] > 20) { if (i < x0) x0 = i; if (y < y0) y0 = y; if (i > x1) x1 = i; if (y > y1) y1 = y; }
+  if (x1 <= x0 || y1 <= y0) return null;
+  const t = document.createElement("canvas"); t.width = x1 - x0 + 2; t.height = y1 - y0 + 2; t.getContext("2d").drawImage(c, -x0, -y0); return t;
+}
+function placeVector(v) { // fit the drawing into the card's subject area
+  const sc = Math.min(1000 / v.width, 820 / v.height); const ow = v.width * sc, oh = v.height * sc;
+  return { ox: W / 2 - ow / 2, oy: 630 - oh / 2, ow, oh };
+}
+
+function sanitizeReading(r) {
+  if (!r || typeof r !== "object") return null;
+  const num = (v) => typeof v === "number" && isFinite(v) ? clamp(v, 0, 1) : null;
+  const word = (v, n) => typeof v === "string" ? v.replace(/[^\p{L}\p{N} .,'\-°\/&]/gu, "").trim().slice(0, n) : "";
+  const out = {
+    subject: ["animal", "person", "vehicle", "object", "building", "plant"].includes(r.subject) ? r.subject : "object",
+    name: word(r.subject_name, 20),
+    landmark: LANDMARKS.includes(r.landmark) ? r.landmark : "none",
+    place: word(r.place, 22), series: word(r.series, 22),
+    words: Array.isArray(r.scene_words) ? r.scene_words.map((w) => word(w, 12).toUpperCase()).filter(Boolean).slice(0, 4) : [],
+    bbox: null, eyes: []
+  };
+  if (Array.isArray(r.bbox) && r.bbox.length === 4) { const b = r.bbox.map(num); if (b.every((v) => v !== null) && b[2] - b[0] > .05 && b[3] - b[1] > .05) out.bbox = b; }
+  if (out.subject === "animal" && Array.isArray(r.eyes)) out.eyes = r.eyes.filter((e) => Array.isArray(e) && e.length === 2 && num(e[0]) !== null && num(e[1]) !== null).slice(0, 2);
+  return out;
+}
+
+/* ---------- 03 subject cut-out ---------- */
+function toLab(r, g, b) {
+  const f = (c) => { c /= 255; return c > .04045 ? ((c + .055) / 1.055) ** 2.4 : c / 12.92; };
+  const R = f(r), G = f(g), B = f(b);
+  let x = (R * .4124 + G * .3576 + B * .1805) / .95047, y = R * .2126 + G * .7152 + B * .0722, z = (R * .0193 + G * .1192 + B * .9505) / 1.08883;
+  const g3 = (t) => t > .008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116; x = g3(x); y = g3(y); z = g3(z);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+function labDist(a, b) { const dl = (a[0] - b[0]) * .7, da = a[1] - b[1], db = a[2] - b[2]; return dl * dl + da * da + db * db; }
+function kmeansLab(samples, k, iters, seed, minShare = .03) {
+  const r = rng(seed); if (!samples.length) return [];
+  if (samples.length > 6000) { const st = samples.length / 6000; const s2 = []; for (let i = 0; i < samples.length; i += st) s2.push(samples[Math.floor(i)]); samples = s2; }
+  let centers = [samples[Math.floor(r() * samples.length)]];
+  while (centers.length < k) { let best = null, bd = -1; for (let t = 0; t < 30; t++) { const c = samples[Math.floor(r() * samples.length)]; let d = Infinity; for (const m of centers) d = Math.min(d, labDist(m, c)); if (d > bd) { bd = d; best = c; } } centers.push(best); }
+  for (let it = 0; it < iters; it++) {
+    const sum = centers.map(() => [0, 0, 0, 0]);
+    for (const s of samples) { let bi = 0, bd = Infinity; for (let j = 0; j < centers.length; j++) { const d = labDist(s, centers[j]); if (d < bd) { bd = d; bi = j; } } const o = sum[bi]; o[0] += s[0]; o[1] += s[1]; o[2] += s[2]; o[3]++; }
+    centers = centers.map((c, j) => sum[j][3] ? [sum[j][0] / sum[j][3], sum[j][1] / sum[j][3], sum[j][2] / sum[j][3]] : c);
+    if (it === iters - 1) { const tot = samples.length; const keep = centers.filter((c, j) => sum[j][3] / tot > minShare); if (keep.length) centers = keep; }
+  }
+  return centers;
+}
+function minDist(c, list) { let bd = Infinity; for (const m of list) { const d = labDist(c, m); if (d < bd) bd = d; } return bd; }
+/* GrabCut-like: background model from outside the subject box (or the photo border), foreground model from inside, iterate */
+function segment(px, hint, tolerance) {
+  const { w, h, data } = px, n = w * h;
+  const lab = new Array(n); for (let i = 0; i < n; i++) lab[i] = toLab(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
+  const box = hint ? [hint[0] - .02, hint[1] - .02, hint[2] + .02, hint[3] + .02] : null;
+  const inBox = new Uint8Array(n), prior = new Float32Array(n);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const u = x / w, v = y / h, i = y * w + x;
+    if (box) { inBox[i] = u > box[0] && u < box[2] && v > box[1] && v < box[3] ? 1 : 0; const cu = (u - (box[0] + box[2]) / 2) / ((box[2] - box[0]) / 2), cv = (v - (box[1] + box[3]) / 2) / ((box[3] - box[1]) / 2); prior[i] = inBox[i] ? 1 - .35 * Math.min(1, cu * cu + cv * cv) : 0; }
+    else { const dx = (u - .5) / .3, dy = (v - .52) / .34; prior[i] = Math.exp(-(dx * dx + dy * dy) / 2); inBox[i] = prior[i] > .08 ? 1 : 0; }
+  }
+  // background samples: everything outside the box, plus a thin frame of the photo
+  const bw = Math.max(2, Math.round(Math.min(w, h) * .04)), bgS = [], fgS = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; const edge = x < bw || y < bw || x >= w - bw || y >= h - bw; if (!inBox[i] || edge) bgS.push(lab[i]); else if (prior[i] > .5) fgS.push(lab[i]); }
+  let bg = kmeansLab(bgS.length ? bgS : fgS, 8, 7, 3);
+  let fg = kmeansLab(fgS.length ? fgS : bgS, 6, 7, 5);
+  // if a foreground cluster looks exactly like the background, it's background seen through the box
+  let mask = new Uint8Array(n);
+  for (let pass = 0; pass < 4; pass++) {
+    const fgClean = fg.filter((c) => minDist(c, bg) > 60) ; const F = fgClean.length ? fgClean : fg;
+    for (let i = 0; i < n; i++) {
+      if (!inBox[i]) { mask[i] = 0; continue; }
+      const df = minDist(lab[i], F), db = minDist(lab[i], bg);
+      mask[i] = df * (1.4 - .45 * prior[i]) < db * tolerance ? 1 : 0;
+    }
+    if (pass === 3) break;
+    const f2 = [], b2 = bgS.slice(0, 4000);
+    for (let i = 0; i < n; i += 2) if (inBox[i]) (mask[i] ? f2 : b2).push(lab[i]);
+    if (f2.length < 40) break;
+    fg = kmeansLab(f2, 6, 6, 11 + pass); bg = kmeansLab(b2, 8, 6, 21 + pass);
+  }
+  mask = boxThreshold(mask, w, h, 2, 0.5);
+  mask = boxThreshold(mask, w, h, 3, 0.42);
+  mask = boxThreshold(mask, w, h, 2, 0.6);
+  mask = keepComponents(mask, w, h);
+  fillHoles(mask, w, h);
+  let area = 0; for (let i = 0; i < n; i++) area += mask[i];
+  if (area < n * 0.01) {
+    const b = hint || [.22, .18, .78, .88];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const u = (x / w - (b[0] + b[2]) / 2) / ((b[2] - b[0]) / 2), v = (y / h - (b[1] + b[3]) / 2) / ((b[3] - b[1]) / 2); mask[y * w + x] = u * u + v * v < 1 ? 1 : 0; }
+  }
+  return { mask, soft: blurF(mask, w, h, 2) };
+}
+function boxThreshold(m, w, h, r, t) {
+  const out = new Uint8Array(w * h), I = new Int32Array((w + 1) * (h + 1));
+  for (let y = 0; y < h; y++) { let row = 0; for (let x = 0; x < w; x++) { row += m[y * w + x]; I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + row; } }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1);
+    const s = I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0];
+    out[y * w + x] = s / ((x1 - x0) * (y1 - y0)) > t ? 1 : 0;
+  }
+  return out;
+}
+function blurF(m, w, h, r) {
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, c = 0; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h) { s += m[yy * w + xx]; c++; } } out[y * w + x] = s / c; }
+  return out;
+}
+function keepComponents(m, w, h) {
+  const lab = new Int32Array(w * h), sizes = [0], q = new Int32Array(w * h); let id = 0;
+  for (let i = 0; i < w * h; i++) if (m[i] && !lab[i]) {
+    id++; let head = 0, tail = 0; q[tail++] = i; lab[i] = id; let sz = 0;
+    while (head < tail) { const p = q[head++]; sz++; const x = p % w, y = (p / w) | 0;
+      if (x > 0 && m[p - 1] && !lab[p - 1]) { lab[p - 1] = id; q[tail++] = p - 1; }
+      if (x < w - 1 && m[p + 1] && !lab[p + 1]) { lab[p + 1] = id; q[tail++] = p + 1; }
+      if (y > 0 && m[p - w] && !lab[p - w]) { lab[p - w] = id; q[tail++] = p - w; }
+      if (y < h - 1 && m[p + w] && !lab[p + w]) { lab[p + w] = id; q[tail++] = p + w; } }
+    sizes.push(sz);
+  }
+  const big = Math.max(0, ...sizes.slice(1)); const out = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) if (lab[i] && sizes[lab[i]] >= big * 0.18) out[i] = 1;
+  return out;
+}
+function keepComponentsMin(m, w, h, frac = 0.002) {
+  const lab = new Int32Array(w * h), sizes = [0], q = new Int32Array(w * h); let id = 0;
+  for (let i = 0; i < w * h; i++) if (m[i] && !lab[i]) {
+    id++; let head = 0, tail = 0; q[tail++] = i; lab[i] = id; let sz = 0;
+    while (head < tail) { const p = q[head++]; sz++; const x = p % w, y = (p / w) | 0;
+      if (x > 0 && m[p - 1] && !lab[p - 1]) { lab[p - 1] = id; q[tail++] = p - 1; }
+      if (x < w - 1 && m[p + 1] && !lab[p + 1]) { lab[p + 1] = id; q[tail++] = p + 1; }
+      if (y > 0 && m[p - w] && !lab[p - w]) { lab[p - w] = id; q[tail++] = p - w; }
+      if (y < h - 1 && m[p + w] && !lab[p + w]) { lab[p + w] = id; q[tail++] = p + w; } }
+    sizes.push(sz);
+  }
+  const out = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) if (lab[i] && sizes[lab[i]] >= w * h * frac) out[i] = 1;
+  return out;
+}
+function fillHoles(m, w, h) {
+  const seen = new Uint8Array(w * h), q = new Int32Array(w * h); let head = 0, tail = 0;
+  const push = (p) => { if (!m[p] && !seen[p]) { seen[p] = 1; q[tail++] = p; } };
+  for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); } for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+  while (head < tail) { const p = q[head++], x = p % w, y = (p / w) | 0; if (x > 0) push(p - 1); if (x < w - 1) push(p + 1); if (y > 0) push(p - w); if (y < h - 1) push(p + w); }
+  for (let i = 0; i < w * h; i++) if (!m[i] && !seen[i]) m[i] = 1;
+}
+function bboxOf(m, w, h) {
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (m[y * w + x]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return { x0: 0, y0: 0, x1: w - 1, y1: h - 1 };
+  return { x0, y0, x1, y1 };
+}
+
+/* ---------- 04 palette ---------- */
+function toPrintColor(c) { // pull towards riso-like inks: tame saturation, keep mid lightness
+  let [hh, s, l] = rgb2hsl(c); s = clamp(s * 1.05, 0, .72); l = clamp(l, .28, .62); return hsl2rgb([hh, s, l]);
+}
+function buildPalette(px, seg, seed) {
+  const { w, h, data } = px; const fg = [], bgS = [];
+  for (let i = 0; i < w * h; i += 1) { const c = [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]; if (seg.mask[i]) fg.push(c); else if (i % 3 === 0) bgS.push(c); }
+  const fk = kmeans(fg.length ? fg : bgS, 5, 10, seed);
+  let fc = fk.centers.map((c, i) => ({ c, n: fk.counts[i] })).filter((o) => o.n > 0).sort((a, b) => b.n - a.n);
+  // subject tones: dark ones become ink, others become print colours, merge near-duplicates
+  const tones = [];
+  for (const o of fc) {
+    if (lum(o.c) < .2) continue;
+    const pc = toPrintColor(o.c);
+    if (tones.every((t) => dist2(t.src, o.c) > 1800) && tones.length < 3) tones.push({ c: pc, src: o.c });
+  }
+  if (!tones.length) tones.push({ c: [150, 146, 140], src: [150, 146, 140] });
+  // keep the photo's light/dark order but spread it across a printable range (white subjects become greys, not paper)
+  tones.sort((a, b) => lum(b.src) - lum(a.src));
+  if (tones.length > 1) tones.forEach((t, i) => { const [hh, ss] = rgb2hsl(t.c); t.c = hsl2rgb([hh, ss, .64 - i * (.3 / (tones.length - 1))]); });
+  if (lum(tones[0].src) > .74) tones[0].c = WHITE_INK.slice(); // white subjects stay white
+  const subject = tones.map((t) => t.c), subjectSrc = tones.map((t) => t.src);
+  // accent / sun: most saturated cluster in the whole picture that isn't the subject's main tone
+  const ak = kmeans(fg.concat(bgS), 7, 8, seed + 5).centers.map((c) => ({ c, s: rgb2hsl(c)[1] * (1 - Math.abs(rgb2hsl(c)[2] - .55)) }));
+  ak.sort((a, b) => b.s - a.s);
+  let sun = null;
+  for (const a of ak) { if (rgb2hsl(a.c)[1] < .22) break; const pc = toPrintColor(a.c); if (dist2(pc, subject[0]) > 5000) { sun = pc; break; } }
+  if (!sun) { const warm = subject[0][0] > subject[0][2]; sun = warm ? [47, 94, 158] : [222, 102, 128]; } // riso blue or riso pink
+  { let [hh, s, l] = rgb2hsl(sun); sun = hsl2rgb([hh, clamp(s, .38, .75), clamp(l, .45, .66)]); }
+  // ground / landmark tone from the background
+  const bgk = kmeans(bgS.length ? bgS : fg, 3, 6, seed + 9);
+  const gi = bgk.counts.indexOf(Math.max(...bgk.counts));
+  let ground = toPrintColor(bgk.centers[gi] || [180, 170, 150]);
+  { let [hh, s, l] = rgb2hsl(ground); ground = hsl2rgb([hh, clamp(s * .7, 0, .45), clamp(l, .52, .72)]); }
+  // paper: cream for warm photos, warm grey for cool ones
+  let warmth = 0; for (const c of fg.length ? fg : bgS) warmth += c[0] - c[2];
+  const paper = warmth >= 0 ? [236, 229, 214] : [228, 224, 216];
+  if (dist2(ground, paper) < 2500) ground = mix(ground, INK, .25);
+  return { subject, subjectSrc, all: subject.concat([INK]), sun, ground, paper, swatches: [sun].concat(subject).slice(0, 3).concat([INK]) };
+}
+
+/* ---------- 05 geometry ---------- */
+function rebuild(px, seg, pal, opts) {
+  const { w, h, data } = px; const { mask, soft } = seg; const bb = bboxOf(mask, w, h);
+  const bw = bb.x1 - bb.x0 + 1, bh = bb.y1 - bb.y0 + 1;
+  const N = opts.density; const cellSrc = Math.max(bw, bh) / N;
+  const cols = Math.ceil(bw / cellSrc), rows = Math.ceil(bh / cellSrc);
+  // where the subject sits on the card
+  const maxW = 1040, maxH = 840; const scale = Math.min(maxW / (cols * cellSrc), maxH / (rows * cellSrc));
+  const cell = cellSrc * scale; const ow = cols * cell, oh = rows * cell;
+  const ox = W / 2 - ow / 2, oy = 630 - oh / 2;
+  const sampleSoft = (u, v) => { // bilinear on soft mask, u/v in source px
+    u = clamp(u, 0, w - 1.001); v = clamp(v, 0, h - 1.001); const x = u | 0, y = v | 0, fx = u - x, fy = v - y;
+    const a = soft[y * w + x], b = soft[y * w + x + 1], c = soft[(y + 1) * w + x], d = soft[(y + 1) * w + x + 1];
+    return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+  };
+  const palette = pal.all; const inkIdx = palette.length - 1;
+  // pre-quantize source pixels: compare against the source tones (not the print versions)
+  const srcTones = pal.subject.map((c) => c);
+  const cells = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const sx = bb.x0 + c * cellSrc, sy = bb.y0 + r * cellSrc;
+    const corners = [sampleSoft(sx, sy), sampleSoft(sx + cellSrc, sy), sampleSoft(sx + cellSrc, sy + cellSrc), sampleSoft(sx, sy + cellSrc)];
+    const centre = sampleSoft(sx + cellSrc / 2, sy + cellSrc / 2);
+    let bits = 0; corners.forEach((v, i) => { if (v > .5) bits |= 1 << i; });
+    let cov = 0; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) cov += sampleSoft(sx + (a + .5) * cellSrc / 3, sy + (b + .5) * cellSrc / 3); cov /= 9;
+    if (!bits && centre < .5) { cells.push(null); continue; }
+    // colour vote
+    const votes = new Array(palette.length).fill(0); let L = 0, cnt = 0;
+    for (let yy = Math.floor(sy); yy < Math.min(h, sy + cellSrc); yy++) for (let xx = Math.floor(sx); xx < Math.min(w, sx + cellSrc); xx++) {
+      const i = yy * w + xx; if (!mask[i]) continue; const col = [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]];
+      const l = lum(col); L += l; cnt++;
+      if (l < .2) votes[inkIdx]++; else votes[nearestPrint(col, pal)]++;
+    }
+    let ci = votes.indexOf(Math.max(...votes)); if (!cnt) ci = 0;
+    if (opts.subject === "person" && r < rows * 0.24) ci = inkIdx; // people: silhouette head
+    if (opts.subject === "person" && ci !== inkIdx && L / Math.max(1, cnt) < .32) ci = inkIdx;
+    cells.push({ r, c, bits, centre, ci, cov });
+  }
+  // smooth colour regions: each cell takes the majority colour of its 3×3 neighbourhood (twice)
+  for (let pass = 0; pass < 2; pass++) {
+    const next = cells.map((o) => o && o.ci);
+    for (const o of cells) { if (!o) continue; const v = new Array(palette.length).fill(0);
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = o.r + dr, c2 = o.c + dc; if (rr < 0 || c2 < 0 || rr >= rows || c2 >= cols) continue; const n = cells[rr * cols + c2]; if (n) v[n.ci] += (dr || dc) ? 1 : 1.5; }
+      next[o.r * cols + o.c] = v.indexOf(Math.max(...v)); }
+    cells.forEach((o, i) => { if (o) o.ci = next[i]; });
+  }
+  cells.forEach((o, i) => { if (!o || o.cov > .3) return; let nb = 0; for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) { const rr = o.r + dr, c2 = o.c + dc; if (rr >= 0 && c2 >= 0 && rr < rows && c2 < cols && cells[rr * cols + c2]) nb++; } if (nb < 2) cells[i] = null; });
+  return { cells, cols, rows, cell, ox, oy, ow, oh, bb, cellSrc, palette };
+}
+function nearestPrint(col, pal) { // nearest subject tone by hue-aware distance in source space
+  let bi = 0, bd = Infinity;
+  pal.subjectSrc.forEach((t, j) => { const d = dist2(col, t); if (d < bd) { bd = d; bi = j; } });
+  return bi;
+}
+
+/* draw one cell's shape (marching-squares → circles, half circles, triangles, squares) */
+function drawCell(ctx, x, y, s, bits, variant) {
+  const TL = 1, TR = 2, BR = 4, BL = 8; const P = [[x, y], [x + s, y], [x + s, y + s], [x, y + s]];
+  ctx.beginPath();
+  const tri = (a, b, c) => { ctx.moveTo(...P[a]); ctx.lineTo(...P[b]); ctx.lineTo(...P[c]); ctx.closePath(); };
+  const quarter = (k, r) => { const [cx, cy] = P[k]; const start = [0, Math.PI / 2, Math.PI, Math.PI * 1.5][[2, 3, 0, 1][k]]; ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, start + Math.PI / 2); ctx.closePath(); };
+  const single = { [TL]: 0, [TR]: 1, [BR]: 2, [BL]: 3 };
+  const three = { [TR | BR | BL]: 2, [TL | BR | BL]: 3, [TL | TR | BL]: 0, [TL | TR | BR]: 1 }; // corner opposite the missing one
+  if (bits === 15 || bits === 5 || bits === 10) { ctx.rect(x, y, s + .6, s + .6); }
+  else if (single[bits] !== undefined) { const k = single[bits]; if (variant < .5) tri(k, (k + 1) % 4, (k + 3) % 4); else quarter(k, s * .78); }
+  else if (three[bits] !== undefined) { const k = three[bits]; if (variant < .62) quarter(k, s + .6); else tri((k + 1) % 4, k, (k + 3) % 4); }
+  else if (bits === (TL | TR)) { if (variant < .55) { ctx.moveTo(x, y); ctx.arc(x + s / 2, y, s / 2, 0, Math.PI); ctx.closePath(); } else ctx.rect(x, y, s, s / 2); }
+  else if (bits === (BL | BR)) { if (variant < .55) { ctx.moveTo(x + s, y + s); ctx.arc(x + s / 2, y + s, s / 2, Math.PI, Math.PI * 2); ctx.closePath(); } else ctx.rect(x, y + s / 2, s, s / 2); }
+  else if (bits === (TL | BL)) { if (variant < .55) { ctx.moveTo(x, y + s); ctx.arc(x, y + s / 2, s / 2, -Math.PI / 2, Math.PI / 2); ctx.closePath(); } else ctx.rect(x, y, s / 2, s); }
+  else if (bits === (TR | BR)) { if (variant < .55) { ctx.moveTo(x + s, y); ctx.arc(x + s, y + s / 2, s / 2, Math.PI / 2, Math.PI * 1.5); ctx.closePath(); } else ctx.rect(x + s / 2, y, s / 2, s); }
+  else { ctx.arc(x + s / 2, y + s / 2, s * .34, 0, Math.PI * 2); } // lone centre → dot
+  ctx.fill();
+}
+
+/* ---------- 06 print: paper, template, riso grain ---------- */
+const paperCache = {};
+function paperLayer(paper) {
+  const key = paper.join(","); if (paperCache[key]) return paperCache[key];
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
+  const img = x.createImageData(W, H); const d = img.data; const r = rng(1234);
+  for (let y = 0; y < H; y++) for (let i = 0; i < W; i++) {
+    const p = (y * W + i) * 4; const n = (r() - .5) * 14 + (r() < .002 ? -26 : 0);
+    const ex = Math.min(i, W - 1 - i, y, H - 1 - y); const edge = ex < 60 ? (1 - ex / 60) ** 2 * 18 : 0;
+    d[p] = paper[0] + n - edge; d[p + 1] = paper[1] + n - edge * 1.05; d[p + 2] = paper[2] + n - edge * 1.25; d[p + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  // fibres
+  x.globalAlpha = .07; x.strokeStyle = "#6b5f4c"; x.lineWidth = 1;
+  for (let k = 0; k < 420; k++) { const px = r() * W, py = r() * H, a = r() * Math.PI, l = 6 + r() * 22; x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + Math.cos(a) * l / 2 + 3, py + Math.sin(a) * l / 2, px + Math.cos(a) * l, py + Math.sin(a) * l); x.stroke(); }
+  // worn edges: light chips and soft dirt
+  x.globalAlpha = 1;
+  for (let k = 0; k < 260; k++) {
+    const side = Math.floor(r() * 4), t = r(); const rad = 1 + r() * 4;
+    const px = side === 0 ? t * W : side === 1 ? W - r() * 7 : side === 2 ? t * W : r() * 7;
+    const py = side === 0 ? r() * 7 : side === 1 ? t * H : side === 2 ? H - r() * 7 : t * H;
+    x.fillStyle = r() < .6 ? "rgba(250,247,240,.85)" : "rgba(120,104,84,.25)"; x.beginPath(); x.arc(px, py, rad, 0, 7); x.fill();
+  }
+  paperCache[key] = c; return c;
+}
+let speckCache = null;
+function speckleLayer() { // ink drop-out mask for riso texture
+  if (speckCache) return speckCache;
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
+  const img = x.createImageData(W, H), d = img.data, r = rng(99);
+  // low-frequency blotch field
+  const gw = 46, gh = 31, grid = new Float32Array(gw * gh).map(() => r());
+  for (let y = 0; y < H; y++) for (let i = 0; i < W; i++) {
+    const gx = i / W * (gw - 1), gy = y / H * (gh - 1), ix = gx | 0, iy = gy | 0, fx = gx - ix, fy = gy - iy;
+    const v = (grid[iy * gw + ix] * (1 - fx) + grid[iy * gw + ix + 1] * fx) * (1 - fy) + (grid[(iy + 1) * gw + ix] * (1 - fx) + grid[(iy + 1) * gw + ix + 1] * fx) * fy;
+    const q = r(); let a = 0;
+    if (q < .16 + v * .2) a = 40 + q * 400; // fine speckle
+    a += v * v * 28; // soft blotches
+    d[(y * W + i) * 4 + 3] = clamp(a, 0, 210);
+  }
+  x.putImageData(img, 0, 0); speckCache = c; return c;
+}
+function riso(layer) { const x = layer.getContext("2d"); x.globalCompositeOperation = "destination-out"; x.drawImage(speckleLayer(), 0, 0); x.globalCompositeOperation = "source-over"; return layer; }
+function newLayer() { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; }
+
+function textSpaced(ctx, str, x, y, spacing, align = "left") {
+  const chars = [...str]; const widths = chars.map((ch) => ctx.measureText(ch).width);
+  const total = widths.reduce((a, b) => a + b, 0) + spacing * (chars.length - 1);
+  let cx = align === "right" ? x - total : align === "center" ? x - total / 2 : x;
+  chars.forEach((ch, i) => { ctx.fillText(ch, cx, y); cx += widths[i] + spacing; });
+  return total;
+}
+
+function drawLandmark(ctx, kind, g, color, rnd) {
+  const { ox, oy, ow, oh } = g; const base = oy + oh; const cx = ox + ow / 2;
+  ctx.fillStyle = rgbStr(color);
+  const side = rnd() < .5 ? -1 : 1;
+  if (kind === "mountain" || kind === "pyramid") {
+    const s = oh * .58; const bx = cx + side * ow * .36;
+    ctx.beginPath(); ctx.moveTo(bx - s * .75, base); ctx.lineTo(bx, base - s); ctx.lineTo(bx + s * .75, base); ctx.closePath(); ctx.fill();
+    const bx2 = cx - side * ow * .4, s2 = s * .55; ctx.globalAlpha = .75;
+    ctx.beginPath(); ctx.moveTo(bx2 - s2 * .75, base); ctx.lineTo(bx2, base - s2); ctx.lineTo(bx2 + s2 * .75, base); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  } else if (kind === "waves") {
+    for (let i = 0; i < 5; i++) { const ww = ow * (1.1 - i * .17); ctx.fillRect(cx - ww / 2 + (i % 2 ? 30 : -20), base + 14 + i * 20, ww, 7); }
+  } else if (kind === "tree" || kind === "palm") {
+    const tx = cx + side * (ow * .5 + 40), th = oh * .7;
+    ctx.fillRect(tx - 5, base - th, 10, th);
+    if (kind === "tree") { ctx.beginPath(); ctx.arc(tx, base - th, th * .32, 0, 7); ctx.fill(); }
+    else for (let k = 0; k < 5; k++) { ctx.beginPath(); const a = -Math.PI + k * Math.PI / 4; ctx.moveTo(tx, base - th); ctx.arc(tx, base - th, th * .3, a, a + .32); ctx.closePath(); ctx.fill(); }
+  } else if (kind === "tower") {
+    const tx = cx + side * (ow * .42 + 30), th = oh * .95; ctx.fillRect(tx - 26, base - th, 52, th);
+    ctx.beginPath(); ctx.moveTo(tx - 34, base - th); ctx.lineTo(tx, base - th - 70); ctx.lineTo(tx + 34, base - th); ctx.closePath(); ctx.fill();
+  } else if (kind === "arch") {
+    const r = Math.max(ow, oh) * .42; ctx.beginPath(); ctx.arc(cx, base, r, Math.PI, 0); ctx.arc(cx, base, r * .78, 0, Math.PI, true); ctx.closePath(); ctx.fill();
+  } else if (kind === "city") {
+    let x = cx - ow * .7; const rr = rng(77); while (x < cx + ow * .7) { const bw = 40 + rr() * 60, bh = oh * (.25 + rr() * .5); ctx.fillRect(x, base - bh, bw - 8, bh); x += bw; }
+  } else { // horizon stripes
+    for (let i = 0; i < 4; i++) { const ww = ow * (1.05 - i * .2); ctx.fillRect(cx - ww / 2, base + 18 + i * 18, ww, 6); }
+  }
+}
+
+function composeCard(ctx, S) {
+  const { pal, geo, meta, seed, reading } = S; const rnd = rng(seed);
+  const cy = geo.oy + geo.oh / 2, cx = W / 2;
+  ctx.drawImage(paperLayer(pal.paper), 0, 0);
+  // guides
+  ctx.strokeStyle = rgbStr(INK, .55); ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(cx, 70); ctx.lineTo(cx, H - 70); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(90, cy); ctx.lineTo(W - 90, cy); ctx.stroke();
+  // colour layers (sun + landmark), multiplied like a second drum
+  const L1 = newLayer(), l1 = L1.getContext("2d");
+  const R = clamp(Math.max(geo.ow, geo.oh) * .56 + 20, 300, 500);
+  const sunR = clamp(Math.min(geo.ow, geo.oh) * .42, 150, 250);
+  const sunPos = [[cx + geo.ow * .22, geo.oy + sunR * .55], [cx - geo.ow * .2, geo.oy + sunR * .5], [cx, geo.oy + sunR * .2]][Math.floor(rnd() * 3)];
+  l1.fillStyle = rgbStr(pal.sun); l1.beginPath(); l1.arc(sunPos[0], clamp(sunPos[1], sunR + 70, H - sunR), sunR, 0, 7); l1.fill();
+  l1.globalAlpha = .78; drawLandmark(l1, reading && reading.landmark ? reading.landmark : "none", geo, pal.ground, rnd); l1.globalAlpha = 1;
+  riso(L1); ctx.globalAlpha = .92; ctx.globalCompositeOperation = "multiply"; ctx.drawImage(L1, 3, 2); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  // thin circle + dots + plus marks
+  ctx.strokeStyle = rgbStr(INK, .7); ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+  ctx.fillStyle = rgbStr(INK);
+  for (let k = 0; k < 3; k++) { const a = rnd() * Math.PI * 2; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, k ? 6 : 10, 0, 7); ctx.fill(); }
+  const plus = (x, y) => { ctx.fillRect(x - 10, y - .9, 20, 1.8); ctx.fillRect(x - .9, y - 10, 1.8, 20); };
+  plus(90, cy); plus(W - 90, cy);
+  ctx.beginPath(); ctx.arc(cx, 70, 5, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(cx, H - 70, 5, 0, 7); ctx.fill();
+
+  // subject: colour drum and ink drum printed separately, slightly off register
+  const colour = newLayer(), ink = newLayer(); const cc = colour.getContext("2d"), ic = ink.getContext("2d");
+  if (S.vec) {
+    cc.drawImage(S.vec, geo.ox, geo.oy, geo.ow, geo.oh);
+  } else if (S.aiImage) {
+    const a = S.aiImage; const sc = Math.min(900 / a.width, 800 / a.height); const aw = a.width * sc, ah = a.height * sc;
+    cc.drawImage(a, cx - aw / 2, 640 - ah / 2, aw, ah);
+  } else {
+    const { cells, cols, cell, ox, oy, palette } = geo; const inkIdx = palette.length - 1;
+    const at = (r, c) => (c < 0 || c >= cols || r < 0 || r >= geo.rows) ? null : cells[r * cols + c];
+    // quadtree: big uniform blocks become one big square / quarter circle / half circle, edges refine down to single cells
+    const blockInfo = (r0, c0, k) => {
+      let filled = 0, total = 0; const votes = new Array(palette.length).fill(0); const quad = [0, 0, 0, 0], qn = [0, 0, 0, 0];
+      for (let r = r0; r < r0 + k; r++) for (let c = c0; c < c0 + k; c++) {
+        if (r >= geo.rows || c >= cols) continue; total++; const o = at(r, c);
+        const qi = r - r0 < k / 2 ? (c - c0 < k / 2 ? 0 : 1) : (c - c0 < k / 2 ? 3 : 2);
+        qn[qi]++; if (o) { quad[qi] += o.cov; filled += o.cov; votes[o.ci] += o.cov; }
+      }
+      const best = votes.indexOf(Math.max(...votes)); const purity = filled ? votes[best] / filled : 0;
+      return { filled: total ? filled / total : 0, best, purity, quad: quad.map((v, i) => qn[i] ? v / qn[i] : 0) };
+    };
+    const place = (r0, c0, k) => {
+      if (r0 >= geo.rows || c0 >= cols) return;
+      if (k === 1) { const o = at(r0, c0); if (!o) return; const tgt = o.ci === inkIdx ? ic : cc; tgt.fillStyle = rgbStr(palette[o.ci]); drawCell(tgt, ox + c0 * cell, oy + r0 * cell, cell, o.bits, hash2(r0, c0, seed + 1)); return; }
+      const inside = r0 + k <= geo.rows && c0 + k <= cols; const b = blockInfo(r0, c0, k);
+      if (b.filled < .04) return;
+      if (inside && b.purity > .86) {
+        const clean = b.quad.every((v) => v > .82 || v < .14);
+        if (clean) {
+          let bits = 0; b.quad.forEach((v, i) => { if (v > .5) bits |= 1 << i; });
+          if (bits) {
+            const tgt = b.best === inkIdx ? ic : cc; tgt.fillStyle = rgbStr(palette[b.best]);
+            const x = ox + c0 * cell, y = oy + r0 * cell, size = cell * k;
+            if (bits === 15) {
+              tgt.fillRect(x, y, size + .6, size + .6);
+              const hv = hash2(r0 * 7 + k, c0, seed);
+              if (hv < .28 && palette.length > 2) { // accent split, like the panels in the references
+                const alt = b.best === inkIdx ? 0 : (b.best + 1) % (palette.length - 1);
+                cc.fillStyle = rgbStr(palette[alt === b.best ? inkIdx : alt]);
+                const kq = Math.floor(hv * 40) % 4; const P = [[x, y], [x + size, y], [x + size, y + size], [x, y + size]][kq];
+                const st = [0, Math.PI / 2, Math.PI, Math.PI * 1.5][[2, 3, 0, 1][kq]];
+                cc.beginPath(); cc.moveTo(P[0], P[1]); cc.arc(P[0], P[1], size, st, st + Math.PI / 2); cc.closePath(); cc.fill();
+              }
+            } else drawCell(tgt, x, y, size, bits, hash2(r0, c0 + k, seed + 2));
+            return;
+          }
+        }
+      }
+      const h2 = k / 2; place(r0, c0, h2); place(r0, c0 + h2, h2); place(r0 + h2, c0, h2); place(r0 + h2, c0 + h2, h2);
+    };
+    for (let r = 0; r < geo.rows; r += 4) for (let c = 0; c < cols; c += 4) place(r, c, 4);
+    // eyes for animals (positions read by Claude, kept only if they land on the subject)
+    if (reading && reading.subject === "animal" && reading.eyes.length) {
+      reading.eyes.forEach(([u, v]) => {
+        const sx = u * S.px.w, sy = v * S.px.h; const c = Math.floor((sx - geo.bb.x0) / geo.cellSrc), r = Math.floor((sy - geo.bb.y0) / geo.cellSrc);
+        const o = at(r, c); if (!o) return;
+        const x = ox + (sx - geo.bb.x0) / geo.cellSrc * cell, y = oy + (sy - geo.bb.y0) / geo.cellSrc * cell;
+        const under = palette[o.ci]; const dark = lum(under) < .42; const er = clamp(cell * .42, 7, 16);
+        ic.fillStyle = dark ? rgbStr(pal.paper) : rgbStr(INK); ic.beginPath(); ic.arc(x, y, er, 0, 7); ic.fill();
+        if (dark) { ic.fillStyle = rgbStr(INK); ic.beginPath(); ic.arc(x + er * .18, y, er * .45, 0, 7); ic.fill(); }
+      });
+    }
+  }
+  riso(colour); riso(ink);
+  // printed on top (not multiplied) so white ink stays white over the paper and the sun
+  ctx.globalAlpha = .97; ctx.drawImage(colour, 0, 0); ctx.globalAlpha = 1;
+  ctx.globalAlpha = .96; ctx.drawImage(ink, 2, -1); ctx.globalAlpha = 1;
+
+  // corner typography
+  ctx.fillStyle = rgbStr(INK); ctx.textBaseline = "alphabetic";
+  const no = String(meta.no).padStart(2, "0");
+  ctx.font = "500 26px 'IBM Plex Mono', monospace"; textSpaced(ctx, `${meta.series} / ${no}`.toUpperCase(), 90, 118, 4.5);
+  ctx.fillRect(90, 140, 54, 2);
+  ctx.font = "500 19px 'IBM Plex Mono', monospace"; textSpaced(ctx, meta.place.toUpperCase(), W - 90, 112, 5, "right");
+  ctx.font = "400 16px 'IBM Plex Mono', monospace";
+  meta.coord.split("/").map((s) => s.trim()).filter(Boolean).slice(0, 2).forEach((s, i) => textSpaced(ctx, s.toUpperCase(), W - 90, 146 + i * 26, 3, "right"));
+  ctx.fillRect(W - 90 - 54, 214 - 30 + (meta.coord ? 30 : 0), 54, 2);
+  const words = meta.words.slice(0, 4); ctx.font = "400 16px 'IBM Plex Mono', monospace";
+  const by = H - 92 - (words.length - 1) * 28;
+  ctx.fillRect(90, by - 40, 54, 2);
+  words.forEach((w, i) => textSpaced(ctx, w.toUpperCase(), 90, by + i * 28, 7));
+  ctx.font = "500 22px 'IBM Plex Mono', monospace"; textSpaced(ctx, `A / ${no}`, W - 90, H - 146, 4, "right");
+  ctx.fillRect(W - 90 - 54, H - 128, 54, 2);
+  ctx.font = "400 16px 'IBM Plex Mono', monospace"; textSpaced(ctx, String(meta.year), W - 90, H - 92, 5, "right");
+  // swatches
+  pal.swatches.forEach((c, i) => { ctx.fillStyle = rgbStr(c); ctx.fillRect(W - 90 - 300 + i * 34, H - 112, 22, 22); });
+}
+
+/* ---------- optional: real AI illustration (needs an OpenAI key; works when the page is opened locally) ---------- */
+async function aiIllustrate(file, pal, reading, key) {
+  const hexes = pal.subject.concat([pal.sun]).map(hex).join(", ");
+  const who = reading && reading.subject === "person" ? "The person is a flat silhouette with no facial features." : reading && reading.subject === "animal" ? "Keep the animal's eyes as small simple dots." : "";
+  const prompt = `Redraw only the main subject of this photo as a flat geometric riso-print illustration built from circles, half circles, quarter circles, triangles and squares, like a modernist postcard. Use only these inks: ${hexes} and near-black #1F1D1B. ${who} Transparent background. No text, no frame, no shadow, no brand logos. Subtle riso grain.`;
+  const fd = new FormData(); fd.append("model", "gpt-image-1"); fd.append("prompt", prompt); fd.append("size", "1536x1024"); fd.append("background", "transparent"); fd.append("image", file, file.name || "photo.png");
+  const res = await fetch("https://api.openai.com/v1/images/edits", { method: "POST", headers: { Authorization: "Bearer " + key }, body: fd });
+  if (!res.ok) throw new Error("ai " + res.status);
+  const j = await res.json(); const b64 = j.data && j.data[0] && j.data[0].b64_json; if (!b64) throw new Error("ai empty");
+  const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+  // trim transparent margins
+  const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const x = c.getContext("2d"); x.drawImage(img, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < c.height; y += 2) for (let i = 0; i < c.width; i += 2) if (d[(y * c.width + i) * 4 + 3] > 20) { x0 = Math.min(x0, i); y0 = Math.min(y0, y); x1 = Math.max(x1, i); y1 = Math.max(y1, y); }
+  if (x1 <= x0) return img; const t = document.createElement("canvas"); t.width = x1 - x0; t.height = y1 - y0; t.getContext("2d").drawImage(c, -x0, -y0); return t;
+}
+
+/* =====================================================================
+   App flow
+   ===================================================================== */
+const S = { seed: 1, density: 20, cut: 1 };
+const DEFAULT_WORDS = {
+  warm: ["WARMTH", "LIGHT", "SLOW", "HOURS"], cool: ["STILLNESS", "AIR", "DISTANCE", "QUIET"],
+  animal: ["INSTINCT", "MOTION", "FREEDOM"], person: ["QUIET", "PEOPLE", "BUILD", "WORLDS"], vehicle: ["MOTION", "PLACES", "ALWAYS", "FURTHER"]
+};
+function counter() { return parseInt(store.get("no", "1"), 10) || 1; }
+function setNo(n) { document.querySelectorAll(".js-no").forEach((e) => (e.textContent = String(n).padStart(2, "0"))); $("hdrNo").textContent = String(n).padStart(2, "0"); }
+document.querySelectorAll(".js-year").forEach((e) => (e.textContent = new Date().getFullYear()));
+setNo(counter());
+
+function show(id) { ["intake", "loading", "result"].forEach((s) => ($(s).hidden = s !== id)); window.scrollTo({ top: 0 }); }
+function toast(msg, ms = 2600) { const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), ms); }
+function fmtCoord(lat, lon) { return `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? "N" : "S"} / ${Math.abs(lon).toFixed(4)}° ${lon >= 0 ? "E" : "W"}`; }
+
+const steps = ["read", "look", "cut", "pal", "geo", "print"];
+let stepT0 = 0, tick = null;
+function stepOn(k, pct) {
+  const idx = steps.indexOf(k);
+  document.querySelectorAll("#log li").forEach((li, i) => { li.classList.toggle("done", i < idx); li.classList.toggle("on", i === idx); });
+  $("pct").textContent = Math.round(pct) + "%";
+}
+async function atLeast(ms, since) { const left = ms - (performance.now() - since); if (left > 0) await sleep(left); }
+
+async function run(file) {
+  $("intakeErr").hidden = true;
+  let loaded;
+  try { loaded = await loadImage(file); }
+  catch (e) { $("intakeErr").textContent = "이 파일은 브라우저에서 열 수 없어요. JPG나 PNG로 바꿔서 다시 올려 주세요."; $("intakeErr").hidden = false; return; }
+  S.file = file; S.img = loaded.img; S.reading = null; S.aiImage = null; S.seed = (Math.random() * 1e9) | 0;
+  // loading screen
+  $("scanPhoto").src = loaded.url; $("lsun").style.background = "";
+  document.querySelectorAll("#loadSw i").forEach((i) => { i.style.background = ""; i.style.borderColor = ""; });
+  $("loadPlace").innerHTML = "Reading<br>location…"; $("loadNote").textContent = "사진은 이 브라우저 안에서만 처리돼요.";
+  show("loading");
+  const t0 = performance.now(); clearInterval(tick);
+  tick = setInterval(() => { const s = Math.floor((performance.now() - t0) / 1000); $("elapsed").textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; }, 250);
+  try {
+    let t = performance.now(); stepOn("read", 4);
+    const exif = await readExif(file); S.exif = exif;
+    S.px = workPixels(S.img, 360);
+    $("loadPlace").innerHTML = exif.lat != null ? fmtCoord(exif.lat, exif.lon).replace(" / ", "<br>") : "No GPS<br>in photo";
+    await atLeast(700, t);
+
+    t = performance.now(); stepOn("look", 12);
+    S.vec = null; S.engine = "local";
+    let crawl = 12; const crawler = setInterval(() => { crawl = Math.min(64, crawl + (64 - crawl) * 0.035); $("pct").textContent = Math.round(crawl) + "%"; }, 400);
+    // engine 1: local server → Codex image generation on the user's ChatGPT plan (only when served by server/server.mjs)
+    if (await localEngineAvailable()) {
+      try {
+        $("loadNote").textContent = "코덱스가 내 ChatGPT 플랜으로 주인공 그림을 그리고 있어요. 1~3분쯤 걸려요.";
+        const drawn = await codexIllustrate(S.img, () => stepOn("cut", crawl));
+        if (drawn) {
+          const cut = await cutoutIllustration(drawn.img);
+          S.vec = cut.canvas; S.engine = "codex";
+          S.reading = drawn.reading || { subject: "object", landmark: "none", eyes: [], words: [] };
+          S.reading.inks = cut.inks; if (!S.reading.sun) S.reading.sun = pickSun(cut.inks);
+        }
+      } catch (e) { console.error(e); S.vec = null; }
+    }
+    // engine 2: Claude vector drawing (inside claude.ai)
+    if (!S.vec) try {
+      $("loadNote").textContent = "Claude가 사진을 보고 주인공을 도형으로 그리고 있어요. 30초에서 1분 30초쯤 걸려요. 처음 한 번은 허용 창이 떠요.";
+      const drawn = await claudeDraw(S.img, () => stepOn("cut", crawl));
+      if (drawn) { S.reading = drawn.reading; S.vec = drawn.canvas; S.engine = "claude"; }
+    } catch (e) { S.vec = null; }
+    clearInterval(crawler);
+    if (!S.vec) $("loadNote").textContent = "그림 엔진에서 결과를 받지 못해서 브라우저 도형 엔진으로 그려요.";
+    stepOn("cut", 66); await frame();
+    S.seg = segment(S.px, S.reading && S.reading.bbox, S.cut);
+    await atLeast(500, t);
+
+    t = performance.now(); stepOn("pal", 72); await frame();
+    S.pal = buildPalette(S.px, S.seg, 5);
+    if (S.vec && S.reading) {
+      if (S.reading.inks && S.reading.inks.length) { S.pal.subject = S.reading.inks.slice(0, 3); S.pal.all = S.pal.subject.concat([INK]); }
+      if (S.reading.sun) S.pal.sun = S.reading.sun;
+      S.pal.swatches = [S.pal.sun].concat(S.pal.subject).slice(0, 3).concat([INK]);
+      S.pal.paper = [236, 229, 214];
+    }
+    $("lsun").style.background = hex(S.pal.sun); $("lsun").style.mixBlendMode = "multiply";
+    const sw = document.querySelectorAll("#loadSw i");
+    for (let i = 0; i < sw.length; i++) { await sleep(140); sw[i].style.background = hex(S.pal.swatches[i] || INK); sw[i].style.borderColor = "transparent"; }
+    await atLeast(600, t);
+
+    t = performance.now(); stepOn("geo", 82); await frame();
+    const key = store.get("key", "");
+    if (!S.vec && key) {
+      $("loadNote").textContent = "AI가 주인공 일러스트를 그리고 있어요. 30초~1분 걸려요.";
+      try { S.aiImage = await aiIllustrate(file, S.pal, S.reading, key); S.engine = "ai"; }
+      catch (e) { S.aiImage = null; S.aiError = true; $("loadNote").textContent = "AI 호출이 안 돼서 도형 엔진으로 그려요."; }
+    }
+    S.geo = S.vec ? placeVector(S.vec) : rebuild(S.px, S.seg, S.pal, { density: S.density, subject: S.reading && S.reading.subject });
+    await atLeast(600, t);
+
+    t = performance.now(); stepOn("print", 88); await frame();
+    await (document.fonts ? Promise.race([document.fonts.load("500 20px 'IBM Plex Mono'"), sleep(2500)]) : null);
+    fillFields();
+    render();
+    $("pct").textContent = "100%";
+    await atLeast(800, t);
+    clearInterval(tick);
+    showResult();
+  } catch (e) {
+    clearInterval(tick); console.error(e);
+    show("intake"); $("intakeErr").textContent = "엽서를 만드는 중에 문제가 생겼어요. 다른 사진으로 다시 해 주세요."; $("intakeErr").hidden = false;
+  }
+}
+
+function fillFields() {
+  const r = S.reading || {}; const ex = S.exif || {};
+  const warm = S.pal.paper[0] === 236;
+  const words = r.words && r.words.length >= 3 ? r.words : (DEFAULT_WORDS[r.subject] || (warm ? DEFAULT_WORDS.warm : DEFAULT_WORDS.cool));
+  $("fSeries").value = r.series || store.get("series", "FIELD NOTES");
+  $("fPlace").value = r.place || (ex.lat != null ? "SOMEWHERE" : "SOMEWHERE");
+  $("fCoord").value = ex.lat != null ? fmtCoord(ex.lat, ex.lon) : "00.0000° N / 00.0000° E";
+  $("fWords").value = words.join(", ");
+  $("fYear").value = ex.year || new Date().getFullYear();
+  $("fDensity").value = S.density; $("fCut").value = S.cut;
+}
+function meta() {
+  return {
+    no: counter(), series: $("fSeries").value.trim() || "FIELD NOTES", place: $("fPlace").value.trim(),
+    coord: $("fCoord").value.trim(), words: $("fWords").value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean),
+    year: $("fYear").value.trim()
+  };
+}
+function render() {
+  const ctx = $("out").getContext("2d");
+  composeCard(ctx, { pal: S.pal, geo: S.geo, meta: meta(), seed: S.seed, reading: S.reading, aiImage: S.aiImage, vec: S.vec, px: S.px });
+  $("outSw").innerHTML = ""; S.pal.swatches.forEach((c) => { const i = document.createElement("i"); i.style.background = hex(c); i.style.borderColor = "transparent"; i.title = hex(c).toUpperCase(); $("outSw").appendChild(i); });
+  $("outMeta").textContent = `A / ${String(counter()).padStart(2, "0")} · ${S.pal.swatches.map((c) => hex(c).toUpperCase()).join(" ")}`;
+}
+function showResult() {
+  const r = S.reading; const el = $("reading"); el.textContent = "";
+  const chip = (t, blue) => { const s = document.createElement("span"); s.className = "chip" + (blue ? " blue" : ""); s.textContent = t; return s; };
+  if (r) {
+    el.appendChild(chip(r.subject, true)); if (r.landmark !== "none") el.appendChild(chip(r.landmark));
+    const p = document.createElement("div"); p.style.marginTop = "8px";
+    p.textContent = S.engine === "claude" ? "Claude가 사진을 보고 주인공만 도형으로 직접 그렸어요." + (r.subject === "person" ? " 사람은 얼굴 없는 실루엣이에요." : r.subject === "animal" ? " 동물 눈은 살렸어요." : "") : r.subject === "person" ? "사람은 얼굴 없는 실루엣으로 그렸어요." : r.subject === "animal" ? (r.eyes.length ? "동물 눈을 살렸어요." : "눈 위치를 못 찾아서 눈 없이 그렸어요.") : "주인공을 도형으로 다시 그렸어요.";
+    el.appendChild(p);
+  } else {
+    el.textContent = "Claude 그림을 받지 못해 브라우저 도형 엔진으로 그린 임시 결과예요. Claude 사용을 허용하고 다시 올리면 훨씬 정확해져요.";
+  }
+  if (S.engine === "codex") { el.textContent = ""; el.appendChild(chip(r.subject || "subject", true)); const p2 = document.createElement("div"); p2.style.marginTop = "8px"; p2.textContent = "코덱스가 사진을 보고 레퍼런스 규칙대로 주인공을 그렸어요."; el.appendChild(p2); }
+  $("engineLabel").textContent = S.engine === "codex" ? "Engine: Codex image generation + fixed template" : S.engine === "claude" ? "Engine: Claude vector drawing + fixed template" : S.engine === "ai" ? "Engine: AI illustration + fixed template" : "Engine: local geometry";
+  ["fDensity", "fCut"].forEach((id) => { $(id).closest(".field").hidden = S.engine !== "local"; });
+  show("result");
+}
+
+/* ---------- engine 1 client: talks to server/server.mjs, which runs the Codex CLI ---------- */
+let _localEngine = null;
+async function localEngineAvailable() {
+  if (_localEngine !== null) return _localEngine;
+  if (!/^https?:$/.test(location.protocol)) return (_localEngine = false);
+  try { const r = await Promise.race([fetch("/api/health"), sleep(2500).then(() => null)]); _localEngine = !!(r && r.ok && (await r.json()).codex); }
+  catch (e) { _localEngine = false; }
+  return _localEngine;
+}
+async function codexIllustrate(img, onStage) {
+  const blob = await photoBlob(img, 1536);
+  const photo = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+  const stage2 = setTimeout(() => onStage && onStage(), 15000);
+  try {
+    const r = await fetch("/api/illustrate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photo }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "illustrate " + r.status);
+    if (!j.image) return null;
+    const out = new Image(); out.src = j.image; await out.decode();
+    let reading = null;
+    if (j.meta) { reading = sanitizeReading(j.meta); if (reading && typeof j.meta.sun === "string" && /^#[0-9a-f]{6}$/i.test(j.meta.sun)) reading.sun = hexToRgb(j.meta.sun); }
+    return { img: out, reading };
+  } finally { clearTimeout(stage2); }
+}
+
+/* ---------- illustration mode: a finished subject illustration (from ChatGPT / Codex / Figma) → postcard ---------- */
+async function cutoutIllustration(img) {
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const c = document.createElement("canvas"); const sc = Math.min(1, 1800 / Math.max(iw, ih));
+  c.width = Math.round(iw * sc); c.height = Math.round(ih * sc);
+  const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, c.width, c.height);
+  const id = x.getImageData(0, 0, c.width, c.height), d = id.data, w = c.width, h = c.height, n = w * h;
+  let hasAlpha = false; for (let i = 0; i < n; i += 97) if (d[i * 4 + 3] < 250) { hasAlpha = true; break; }
+  let keep;
+  if (hasAlpha) { keep = new Uint8Array(n); for (let i = 0; i < n; i++) keep[i] = d[i * 4 + 3] > 20 ? 1 : 0; }
+  else {
+    // background = median colour of the border; pixels close to it become transparent
+    const bs = []; for (let i = 0; i < w; i += 3) { bs.push(i); bs.push((h - 1) * w + i); } for (let y = 0; y < h; y += 3) { bs.push(y * w); bs.push(y * w + w - 1); }
+    const med = (k) => { const a = bs.map((o) => d[o * 4 + k]).sort((p, q) => p - q); return a[a.length >> 1]; };
+    const bg = [med(0), med(1), med(2)];
+    const dist = new Float32Array(n); for (let i = 0; i < n; i++) { const dr = d[i * 4] - bg[0], dg = d[i * 4 + 1] - bg[1], db = d[i * 4 + 2] - bg[2]; dist[i] = Math.sqrt(dr * dr + dg * dg + db * db); }
+    const bl = blurF(dist, w, h, 2);
+    const m = new Uint8Array(n); for (let i = 0; i < n; i++) m[i] = bl[i] > 18 ? 1 : 0;
+    keep = keepComponentsMin(m, w, h); fillHoles(keep, w, h);
+    const soft = blurF(keep, w, h, 1); for (let i = 0; i < n; i++) d[i * 4 + 3] = Math.round(255 * soft[i]);
+    x.putImageData(id, 0, 0);
+  }
+  const samples = []; for (let i = 0; i < n; i += 29) if (keep[i]) samples.push([d[i * 4], d[i * 4 + 1], d[i * 4 + 2]]);
+  const km = kmeans(samples.length ? samples : [[150, 150, 150]], 6, 8, 3);
+  const inks = km.centers.map((cc, i) => ({ c: cc, n: km.counts[i] })).filter((o) => o.n && lum(o.c) > .2).sort((a, b) => b.n - a.n)
+    .reduce((acc, o) => { if (acc.length < 3 && acc.every((a) => dist2(a, o.c) > 2500)) acc.push(o.c); return acc; }, []);
+  return { canvas: trimAlpha(c) || c, inks };
+}
+function pickSun(inks) { // a riso colour that stands apart from the illustration's own inks
+  const cands = [[93, 130, 181], [232, 166, 160], [217, 162, 91], [127, 179, 184], [222, 102, 128], [47, 94, 158]];
+  let best = cands[0], bd = -1; for (const c of cands) { const d = Math.min(...inks.map((i) => dist2(i, c)).concat([1e9])); if (d > bd) { bd = d; best = c; } } return best;
+}
+async function applyIllustration(img, m = {}) {
+  const cut = await cutoutIllustration(img);
+  S.vec = cut.canvas; S.engine = "illustration"; S.aiImage = null; S.px = null; S.seg = null;
+  S.seed = m.seed != null ? m.seed : (Math.random() * 1e9) | 0;
+  const sun = typeof m.sun === "string" && /^#[0-9a-f]{6}$/i.test(m.sun) ? hexToRgb(m.sun) : pickSun(cut.inks);
+  const paper = [236, 229, 214];
+  S.pal = { subject: cut.inks, subjectSrc: cut.inks, all: cut.inks.concat([INK]), sun, ground: mix(sun, paper, .3), paper, swatches: [sun].concat(cut.inks).slice(0, 3).concat([INK]) };
+  S.reading = { subject: m.subject || "object", name: "", landmark: LANDMARKS.includes(m.landmark) ? m.landmark : "none", eyes: [], words: [], series: "", place: "" };
+  S.geo = placeVector(S.vec); S.exif = {};
+  $("fSeries").value = m.series || store.get("series", "FIELD NOTES");
+  $("fPlace").value = m.place || "SOMEWHERE";
+  $("fCoord").value = m.coord || "00.0000° N / 00.0000° E";
+  $("fWords").value = (Array.isArray(m.words) && m.words.length ? m.words : DEFAULT_WORDS.warm).join(", ");
+  $("fYear").value = m.year || new Date().getFullYear();
+  if (m.no) { store.set("no", String(m.no)); setNo(m.no); }
+  await (document.fonts ? Promise.race([document.fonts.load("500 20px 'IBM Plex Mono'"), sleep(2500)]) : null);
+  render();
+}
+async function runIllustration(file) {
+  $("intakeErr").hidden = true;
+  let loaded; try { loaded = await loadImage(file); } catch (e) { $("intakeErr").textContent = "이 파일은 열 수 없어요. PNG나 JPG로 올려 주세요."; $("intakeErr").hidden = false; return; }
+  $("scanPhoto").src = loaded.url; $("loadPlace").innerHTML = "Illustration<br>mode"; $("loadNote").textContent = "일러스트의 배경을 빼고 엽서 틀에 앉히는 중이에요.";
+  document.querySelectorAll("#loadSw i").forEach((i) => { i.style.background = ""; i.style.borderColor = ""; });
+  show("loading"); stepOn("cut", 40); await frame();
+  const t = performance.now();
+  try { await applyIllustration(loaded.img); stepOn("print", 92); await atLeast(1200, t); }
+  catch (e) { console.error(e); show("intake"); $("intakeErr").textContent = "일러스트를 엽서로 만들지 못했어요."; $("intakeErr").hidden = false; return; }
+  $("reading").textContent = "올린 일러스트의 배경을 빼고 고정 엽서 템플릿에 앉혔어요. 정보 칸을 고치면 바로 반영돼요.";
+  $("engineLabel").textContent = "Engine: your illustration + fixed template";
+  ["fDensity", "fCut"].forEach((id) => { $(id).closest(".field").hidden = true; });
+  show("result");
+}
+/* Public hook for automation (tools/compose.mjs): compose a postcard from an illustration, return a PNG data URL. */
+window.PostcardLab = {
+  async compose({ illustration, meta = {} }) {
+    const img = new Image(); img.src = illustration; await img.decode();
+    await applyIllustration(img, meta);
+    return $("out").toDataURL("image/png");
+  }
+};
+
+/* ---------- events ---------- */
+const drop = $("drop"), fileIn = $("file");
+drop.addEventListener("click", () => fileIn.click());
+drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileIn.click(); } });
+fileIn.addEventListener("change", () => { const f = fileIn.files && fileIn.files[0]; fileIn.value = ""; if (f) run(f); });
+$("bIllo").addEventListener("click", () => $("fileIllo").click());
+$("fileIllo").addEventListener("change", () => { const f = $("fileIllo").files && $("fileIllo").files[0]; $("fileIllo").value = ""; if (f) runIllustration(f); });
+["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) run(f); });
+document.addEventListener("paste", (e) => { if ($("intake").hidden) return; const it = [...(e.clipboardData ? e.clipboardData.items : [])].find((i) => i.type.startsWith("image/")); if (it) run(it.getAsFile()); });
+
+let deb = null; const rerender = () => { clearTimeout(deb); deb = setTimeout(render, 120); };
+["fSeries", "fPlace", "fCoord", "fWords", "fYear"].forEach((id) => $(id).addEventListener("input", rerender));
+$("fSeries").addEventListener("change", () => store.set("series", $("fSeries").value.trim()));
+$("fDensity").addEventListener("input", () => { S.density = +$("fDensity").value; S.geo = rebuild(S.px, S.seg, S.pal, { density: S.density, subject: S.reading && S.reading.subject }); rerender(); });
+$("fCut").addEventListener("change", () => {
+  S.cut = +$("fCut").value; S.seg = segment(S.px, S.reading && S.reading.bbox, S.cut); S.pal = buildPalette(S.px, S.seg, 5);
+  S.geo = rebuild(S.px, S.seg, S.pal, { density: S.density, subject: S.reading && S.reading.subject }); render();
+});
+$("bVary").addEventListener("click", () => { S.seed = (Math.random() * 1e9) | 0; render(); });
+$("bNew").addEventListener("click", () => { store.set("no", String(counter() + 1)); setNo(counter()); show("intake"); });
+$("fKey").value = store.get("key", "");
+$("fKey").addEventListener("change", () => { store.set("key", $("fKey").value.trim()); $("keyNote").textContent = $("fKey").value.trim() ? "저장했어요. 다음 사진부터 AI 엔진을 시도해요. claude.ai 미리보기에서는 외부 API가 막혀 있어서, 저장소의 index.html을 직접 열었을 때만 작동해요." : "키를 지웠어요."; });
+
+let downloads = null;
+if (window.claude && typeof window.claude.use === "function") window.claude.use("downloads").then((d) => { downloads = d; }).catch(() => {});
+$("bSave").addEventListener("click", async () => {
+  const no = String(counter()).padStart(2, "0"); const name = `postcard-${no}.png`;
+  const blob = await new Promise((r) => $("out").toBlob(r, "image/png"));
+  if (downloads) {
+    try { await downloads.save({ filename: name, data: blob }); toast("저장했어요"); }
+    catch (e) { if (e && e.code !== "declined") toast("여기서는 저장할 수 없어요. 엽서 이미지를 길게 눌러 저장해 주세요."); }
+    return;
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+});
+</script>
+<!--APP-END-->
+</body>
+</html>
