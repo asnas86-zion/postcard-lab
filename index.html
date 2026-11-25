@@ -10,7 +10,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
 <style>
 /* Layout: the whole program is a riso-printed postcard on a work table.
    Centre hairlines, corner labels in tiny monospace caps, one blue "sun". */
@@ -194,8 +194,6 @@ body::after {
 .field input[type=range] { width: 100%; accent-color: var(--ink); }
 .field input[type=password] { width: 100%; min-width: 0; border: 0; border-bottom: 1px dashed var(--hair); background: transparent; font-family: var(--mono); font-size: 12px; padding: 4px 0; }
 .field input[type=password]:focus { outline: none; border-bottom-color: var(--riso-blue); }
-.field #fCaption, .field select { font: inherit; font-size: 14px; letter-spacing: normal; text-transform: none; }
-.field select { max-width: 100%; color: inherit; background: var(--paper-light); border: 1px solid var(--hair); padding: 5px; }
 .panel .actions { display: flex; flex-wrap: wrap; gap: 10px; padding-block: 16px; }
 .reading { font-size: 13px; color: var(--ink-soft); padding-block: 12px; border-bottom: 1px solid var(--hair); }
 .reading b { color: var(--ink); font-weight: 500; }
@@ -209,16 +207,6 @@ details.engine p { margin: 0 0 10px; font-size: 13px; color: var(--ink-soft); }
 .toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper-light); font-family: var(--mono); font-size: 12px; letter-spacing: .12em; padding: 10px 16px; z-index: 20; max-width: calc(100% - 32px); }
 .err { color: #A1302E; }
 footer.colophon { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--ink); margin-top: 44px; padding-top: 12px; color: var(--ink-soft); }
-.gallery { width: min(900px, calc(100% - 24px)); max-height: calc(100% - 24px); padding: clamp(16px, 4vw, 32px); color: var(--ink); background: var(--paper-light); border: 1px solid var(--ink); }
-.gallery::backdrop { background: rgba(31, 29, 27, .58); }
-.gallery-head, .gallery-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-.gallery-head h2 { margin: 0; font-size: 22px; }
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(155px, 100%), 1fr)); gap: 18px; padding: 0; list-style: none; }
-.gallery-card { width: 100%; padding: 0 0 8px; background: none; color: inherit; border: 0; border-bottom: 1px solid var(--hair); text-align: start; font: inherit; cursor: pointer; }
-.gallery img { display: block; width: 100%; height: auto; background: var(--paper); }
-.gallery-card img { aspect-ratio: 3 / 2; margin-bottom: 6px; }
-.gallery-actions { margin-bottom: 14px; }
-#galleryImage { max-height: 65vh; object-fit: contain; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -231,7 +219,6 @@ footer.colophon { display: flex; justify-content: space-between; gap: 16px; flex
       <span class="hide-sm">RISO / GEOMETRIC</span>
       <span class="hide-sm">3 : 2 · 1800 × 1200</span>
       <span>Nº <span id="hdrNo">01</span></span>
-      <button class="btn" id="bGallery" type="button">갤러리</button>
     </div>
   </header>
 
@@ -333,11 +320,6 @@ footer.colophon { display: flex; justify-content: space-between; gap: 16px; flex
         <div class="field"><label for="fCoord">Coords</label><input type="text" id="fCoord" maxlength="40"></div>
         <div class="field"><label for="fWords">Words</label><input type="text" id="fWords" maxlength="48" placeholder="MOTION, NATURE, BALANCE"></div>
         <div class="field"><label for="fYear">Year</label><input type="text" id="fYear" maxlength="8"></div>
-        <div class="field"><label for="fCaption">문구</label><input type="text" id="fCaption" maxlength="90" placeholder="엽서에 넣을 문구"></div>
-        <div class="field"><label for="fCaptionFont">서체</label><select id="fCaptionFont">
-          <option value="sans">고딕 · IBM Plex Sans KR</option>
-          <option value="serif">명조 · Noto Serif KR</option>
-        </select></div>
         <div class="field"><label for="fDensity">Detail</label><input type="range" id="fDensity" min="12" max="36" step="1" value="20"></div>
         <div class="field"><label for="fCut">Cut-out</label><input type="range" id="fCut" min="0.6" max="1.6" step="0.05" value="1"></div>
         <div class="actions">
@@ -354,24 +336,6 @@ footer.colophon { display: flex; justify-content: space-between; gap: 16px; flex
       </aside>
     </div>
   </section>
-
-  <dialog id="gallery" class="gallery" aria-labelledby="galleryTitle">
-    <div class="gallery-head">
-      <h2 id="galleryTitle">최근 엽서</h2>
-      <form method="dialog"><button class="btn" type="submit">닫기</button></form>
-    </div>
-    <div id="galleryList">
-      <p id="galleryStatus" class="note" role="status"></p>
-      <ul id="galleryGrid" class="gallery-grid"></ul>
-    </div>
-    <div id="galleryDetail" hidden>
-      <div class="gallery-actions">
-        <button id="galleryBack" class="btn" type="button">목록으로</button>
-        <button id="gallerySave" class="btn solid" type="button">PNG 저장</button>
-      </div>
-      <img id="galleryImage" alt="">
-    </div>
-  </dialog>
 
   <footer class="colophon cap">
     <span>Postcard Lab · prototype</span>
@@ -1001,99 +965,6 @@ function composeCard(ctx, S) {
   ctx.font = "400 16px 'IBM Plex Mono', monospace"; textSpaced(ctx, String(meta.year), W - 90, H - 92, 5, "right");
   // swatches
   pal.swatches.forEach((c, i) => { ctx.fillStyle = rgbStr(c); ctx.fillRect(W - 90 - 300 + i * 34, H - 112, 22, 22); });
-  if (meta.caption) drawCaption(ctx, meta.caption, meta.captionFont, pal.paper, { cx, cy, radius: R }, colour, ink);
-}
-
-const CAPTION_FONTS = {
-  sans: [44, `"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`],
-  serif: [46, `"Noto Serif KR", "AppleMyungjo", "Batang", serif`],
-};
-function captionLines(ctx, text, width) {
-  const glyphs = typeof Intl.Segmenter === "function"
-    ? Array.from(new Intl.Segmenter().segment(text), ({ segment }) => segment)
-    : Array.from(text);
-  const lines = [];
-  let line = "";
-  for (const glyph of glyphs) {
-    if (line && ctx.measureText(line + glyph).width > width) {
-      const space = line.lastIndexOf(" ");
-      lines.push((space > 0 ? line.slice(0, space) : line).trimEnd());
-      line = space > 0 ? line.slice(space + 1) : "";
-    }
-    line = (line + glyph).trimStart();
-  }
-  if (line) lines.push(line.trimEnd());
-  return lines;
-}
-function drawCaption(ctx, text, font, paper, guide, colour, ink) {
-  const [initialSize, family] = CAPTION_FONTS[font] || CAPTION_FONTS.sans;
-  ctx.save();
-  ctx.textBaseline = "top";
-
-  // Sample the finished print before adding the caption. Dark or saturated pixels
-  // occupy space, including the illustration, sun, and printed decoration.
-  const sample = document.createElement("canvas");
-  const scale = 10;
-  sample.width = W / scale;
-  sample.height = H / scale;
-  const sampleCtx = sample.getContext("2d", { willReadFrequently: true });
-  sampleCtx.drawImage(ctx.canvas, 0, 0, sample.width, sample.height);
-  const pixels = sampleCtx.getImageData(0, 0, sample.width, sample.height).data;
-  // White parts of the subject can be nearly the same colour as the paper.
-  // Use their alpha silhouette as well so the caption avoids them.
-  sampleCtx.clearRect(0, 0, sample.width, sample.height);
-  sampleCtx.drawImage(colour, 0, 0, sample.width, sample.height);
-  sampleCtx.drawImage(ink, 0, 0, sample.width, sample.height);
-  const subject = sampleCtx.getImageData(0, 0, sample.width, sample.height).data;
-  let best = null;
-  for (const width of [440, 350, 270]) {
-    let size = initialSize;
-    let lines;
-    do {
-      ctx.font = `600 ${size}px ${family}`;
-      lines = captionLines(ctx, text, width);
-      if (lines.length <= 4 || size <= 24) break;
-      size -= 2;
-    } while (true);
-    const widths = lines.map((line) => Math.ceil(ctx.measureText(line).width));
-    const leading = Math.ceil(size * 1.3);
-    const height = leading * lines.length;
-    for (const y of [255, 330, 410, 490, 685, 765, 845, 920]) {
-      if (y + height > 970 || (y < guide.cy + 18 && y + height > guide.cy - 18)) continue;
-      for (const right of [false, true]) {
-        const x = right ? W - 118 : 118;
-        let inkPixels = 0, area = 0, circleCrossings = 0;
-        widths.forEach((lineWidth, row) => {
-          const left = right ? x - lineWidth : x;
-          const top = y + row * leading;
-          const nearX = left - guide.cx, farX = nearX + lineWidth;
-          const nearY = top - guide.cy, farY = nearY + leading;
-          const minRadius = Math.hypot(Math.max(nearX, -farX, 0), Math.max(nearY, -farY, 0));
-          const maxRadius = Math.hypot(Math.max(Math.abs(nearX), Math.abs(farX)), Math.max(Math.abs(nearY), Math.abs(farY)));
-          if (minRadius < guide.radius + 15 && maxRadius > guide.radius - 15) circleCrossings++;
-          for (let py = Math.floor((top - 10) / scale); py < (top + leading) / scale; py++) {
-            for (let px = Math.floor((left - 12) / scale); px < (left + lineWidth + 12) / scale; px++) {
-              const k = (py * sample.width + px) * 4;
-              const distance = Math.max(Math.abs(paper[0] - pixels[k]), Math.abs(paper[1] - pixels[k + 1]), Math.abs(paper[2] - pixels[k + 2]));
-              if (subject[k + 3] > 20) inkPixels += 3;
-              else if (distance > 28) inkPixels++;
-              area++;
-            }
-          }
-        });
-        const score = inkPixels / Math.max(1, area) + circleCrossings * .35
-          + lines.length * .012 + (initialSize - size) * .003 + Math.abs(y + height / 2 - 400) / 90000;
-        if (!best || score < best.score) best = { score, right, x, y, lines, leading, size, width };
-      }
-    }
-  }
-  if (best) {
-    ctx.fillStyle = rgbStr(INK);
-    ctx.textAlign = best.right ? "right" : "left";
-    ctx.font = `600 ${best.size}px ${family}`;
-    best.lines.forEach((line, i) => ctx.fillText(line, best.x, best.y + i * best.leading, best.width));
-  }
-  ctx.restore();
 }
 
 /* ---------- optional: real AI illustration (needs an OpenAI key; works when the page is opened locally) ---------- */
@@ -1117,7 +988,6 @@ async function aiIllustrate(file, pal, reading, key) {
    App flow
    ===================================================================== */
 const S = { seed: 1, density: 20, cut: 1 };
-let activeCard = null;
 const DEFAULT_WORDS = {
   warm: ["WARMTH", "LIGHT", "SLOW", "HOURS"], cool: ["STILLNESS", "AIR", "DISTANCE", "QUIET"],
   animal: ["INSTINCT", "MOTION", "FREEDOM"], person: ["QUIET", "PEOPLE", "BUILD", "WORLDS"], vehicle: ["MOTION", "PLACES", "ALWAYS", "FURTHER"]
@@ -1127,7 +997,7 @@ function setNo(n) { document.querySelectorAll(".js-no").forEach((e) => (e.textCo
 document.querySelectorAll(".js-year").forEach((e) => (e.textContent = new Date().getFullYear()));
 setNo(counter());
 
-function show(id) { ["intake", "loading", "result"].forEach((s) => ($(s).hidden = s !== id)); $("bGallery").hidden = id === "loading"; window.scrollTo({ top: 0 }); }
+function show(id) { ["intake", "loading", "result"].forEach((s) => ($(s).hidden = s !== id)); window.scrollTo({ top: 0 }); }
 function toast(msg, ms = 2600) { const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), ms); }
 function fmtCoord(lat, lon) { return `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? "N" : "S"} / ${Math.abs(lon).toFixed(4)}° ${lon >= 0 ? "E" : "W"}`; }
 
@@ -1219,7 +1089,6 @@ async function run(file) {
     await atLeast(800, t);
     clearInterval(tick);
     showResult();
-    rememberResult();
   } catch (e) {
     clearInterval(tick); console.error(e);
     show("intake"); $("intakeErr").textContent = "엽서를 만드는 중에 문제가 생겼어요. 다른 사진으로 다시 해 주세요."; $("intakeErr").hidden = false;
@@ -1241,17 +1110,14 @@ function meta() {
   return {
     no: counter(), series: $("fSeries").value.trim() || "FIELD NOTES", place: $("fPlace").value.trim(),
     coord: $("fCoord").value.trim(), words: $("fWords").value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean),
-    year: $("fYear").value.trim(),
-    caption: $("fCaption").value.trim(), captionFont: $("fCaptionFont").value,
+    year: $("fYear").value.trim()
   };
 }
-function render(archive = true) {
+function render() {
   const ctx = $("out").getContext("2d");
-  const details = meta();
-  composeCard(ctx, { pal: S.pal, geo: S.geo, meta: details, seed: S.seed, reading: S.reading, aiImage: S.aiImage, vec: S.vec, px: S.px });
+  composeCard(ctx, { pal: S.pal, geo: S.geo, meta: meta(), seed: S.seed, reading: S.reading, aiImage: S.aiImage, vec: S.vec, px: S.px });
   $("outSw").innerHTML = ""; S.pal.swatches.forEach((c) => { const i = document.createElement("i"); i.style.background = hex(c); i.style.borderColor = "transparent"; i.title = hex(c).toUpperCase(); $("outSw").appendChild(i); });
   $("outMeta").textContent = `A / ${String(counter()).padStart(2, "0")} · ${S.pal.swatches.map((c) => hex(c).toUpperCase()).join(" ")}`;
-  if (archive && activeCard) archiveResult(activeCard, details);
 }
 function showResult() {
   const r = S.reading; const el = $("reading"); el.textContent = "";
@@ -1343,7 +1209,7 @@ async function applyIllustration(img, m = {}) {
   $("fYear").value = m.year || new Date().getFullYear();
   if (m.no) { store.set("no", String(m.no)); setNo(m.no); }
   await (document.fonts ? Promise.race([document.fonts.load("500 20px 'IBM Plex Mono'"), sleep(2500)]) : null);
-  render(false);
+  render();
 }
 async function runIllustration(file) {
   $("intakeErr").hidden = true;
@@ -1358,7 +1224,6 @@ async function runIllustration(file) {
   $("engineLabel").textContent = "Engine: your illustration + fixed template";
   ["fDensity", "fCut"].forEach((id) => { $(id).closest(".field").hidden = true; });
   show("result");
-  rememberResult();
 }
 /* Public hook for automation (tools/compose.mjs): compose a postcard from an illustration, return a PNG data URL. */
 window.PostcardLab = {
@@ -1369,187 +1234,19 @@ window.PostcardLab = {
   }
 };
 
-/* ---------- local postcard gallery ---------- */
-const GALLERY_LIMIT = 10;
-let galleryDb, galleryWrite = Promise.resolve(), galleryError = false;
-const gallery = $("gallery");
-let thumbnailUrls = [], selectedCard = null, previewUrl = null, galleryRequest = 0;
-
-function openGalleryDb() {
-  if (!galleryDb) {
-    galleryDb = new Promise((resolve, reject) => {
-      const request = indexedDB.open("postcard-lab-gallery", 1);
-      request.onupgradeneeded = () => request.result.createObjectStore("cards", { keyPath: "id", autoIncrement: true });
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    }).catch((error) => { galleryDb = null; throw error; });
-  }
-  return galleryDb;
-}
-function canvasBlob(canvas, type = "image/png", quality) {
-  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
-}
-async function writeGalleryCard(card, contents) {
-  const db = await openGalleryDb();
-  await new Promise((resolve, reject) => {
-    const tx = db.transaction("cards", "readwrite");
-    const cards = tx.objectStore("cards");
-    let id = card.id;
-    tx.oncomplete = () => { card.id = id; resolve(); };
-    tx.onabort = () => reject(tx.error || new Error("갤러리 저장이 취소됐어요."));
-    if (id == null) {
-      const add = cards.add(contents);
-      add.onsuccess = () => {
-        id = add.result;
-        const keys = cards.getAllKeys();
-        keys.onsuccess = () => keys.result.slice(0, Math.max(0, keys.result.length - GALLERY_LIMIT)).forEach((key) => cards.delete(key));
-      };
-    } else {
-      const existing = cards.getKey(id);
-      existing.onsuccess = () => {
-        if (existing.result !== undefined) cards.put({ ...contents, id });
-      };
-    }
-  });
-}
-function archiveResult(card, details) {
-  const out = $("out");
-  const thumbnail = document.createElement("canvas");
-  thumbnail.width = 360; thumbnail.height = 240;
-  thumbnail.getContext("2d").drawImage(out, 0, 0, thumbnail.width, thumbnail.height);
-  const snapshot = Promise.all([canvasBlob(out), canvasBlob(thumbnail, "image/jpeg", .86)]);
-  galleryWrite = galleryWrite.then(async () => {
-    const [png, preview] = await snapshot;
-    if (!png || !preview) throw new Error("엽서를 이미지로 저장하지 못했어요.");
-    await writeGalleryCard(card, { png, preview, createdAt: card.createdAt, series: details.series, no: details.no });
-  }).catch((error) => {
-    console.error(error);
-    if (!galleryError) toast("갤러리에 저장할 수 없어요. PNG 저장은 계속 사용할 수 있어요.");
-    galleryError = true;
-  });
-}
-function rememberResult() {
-  activeCard = { createdAt: Date.now(), id: null };
-  archiveResult(activeCard, meta());
-}
-async function readGallery() {
-  await galleryWrite;
-  const db = await openGalleryDb();
-  return new Promise((resolve, reject) => {
-    const request = db.transaction("cards").objectStore("cards").getAll();
-    request.onsuccess = () => resolve(request.result.reverse());
-    request.onerror = () => reject(request.error);
-  });
-}
-function showGalleryList() {
-  $("galleryDetail").hidden = true;
-  $("galleryList").hidden = false;
-  $("galleryImage").removeAttribute("src");
-  if (previewUrl) URL.revokeObjectURL(previewUrl);
-  previewUrl = null;
-  selectedCard = null;
-}
-function previewGalleryCard(card, label) {
-  selectedCard = card;
-  previewUrl = URL.createObjectURL(card.png);
-  $("galleryImage").src = previewUrl;
-  $("galleryImage").alt = label;
-  $("galleryList").hidden = true;
-  $("galleryDetail").hidden = false;
-  $("galleryBack").focus();
-}
-$("bGallery").addEventListener("click", async () => {
-  showGalleryList();
-  gallery.showModal();
-  const request = ++galleryRequest;
-  const status = $("galleryStatus");
-  status.textContent = "엽서를 불러오는 중이에요.";
-  try {
-    await Promise.race([captionLoad, sleep(1200)]);
-    flushRender();
-    const cards = await readGallery();
-    if (!gallery.open || request !== galleryRequest) return;
-    status.textContent = cards.length
-      ? `이 브라우저에 저장된 엽서 ${cards.length} / ${GALLERY_LIMIT} · 새 엽서를 만들면 오래된 순서대로 교체돼요.`
-      : "엽서를 만들면 여기에 자동으로 저장돼요.";
-    for (const card of cards) {
-      const item = document.createElement("li");
-      const button = document.createElement("button");
-      button.type = "button"; button.className = "gallery-card";
-      button.dataset.cardId = String(card.id);
-      const label = `${card.series} / ${String(card.no).padStart(2, "0")} · ${new Date(card.createdAt).toLocaleDateString("ko-KR")}`;
-      const image = document.createElement("img");
-      const url = URL.createObjectURL(card.preview);
-      thumbnailUrls.push(url); image.src = url; image.alt = "";
-      button.append(image, label);
-      button.addEventListener("click", () => previewGalleryCard(card, label));
-      item.append(button); $("galleryGrid").append(item);
-    }
-  } catch (error) {
-    console.error(error);
-    if (request === galleryRequest) status.textContent = "이 브라우저에서는 저장한 엽서를 불러올 수 없어요.";
-  }
-});
-$("galleryBack").addEventListener("click", () => {
-  const id = selectedCard?.id;
-  showGalleryList();
-  const buttons = [...$("galleryGrid").querySelectorAll("button")];
-  (buttons.find((button) => button.dataset.cardId === String(id)) || buttons[0])?.focus();
-});
-gallery.addEventListener("close", () => {
-  showGalleryList();
-  $("galleryGrid").replaceChildren();
-  thumbnailUrls.forEach((url) => URL.revokeObjectURL(url));
-  thumbnailUrls = [];
-});
-$("gallerySave").addEventListener("click", () => {
-  if (selectedCard) downloadPng(selectedCard.png, `postcard-${selectedCard.id}.png`);
-});
-
 /* ---------- events ---------- */
 const drop = $("drop"), fileIn = $("file");
-let makingCard = false;
-async function startCard(handler, file) {
-  if (makingCard || $("intake").hidden || gallery.open) return;
-  makingCard = true;
-  activeCard = null;
-  captionLoad = Promise.resolve();
-  $("fCaption").value = "";
-  try { await handler(file); }
-  finally { makingCard = false; }
-}
 drop.addEventListener("click", () => fileIn.click());
 drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileIn.click(); } });
-fileIn.addEventListener("change", () => { const f = fileIn.files && fileIn.files[0]; fileIn.value = ""; if (f) startCard(run, f); });
+fileIn.addEventListener("change", () => { const f = fileIn.files && fileIn.files[0]; fileIn.value = ""; if (f) run(f); });
 $("bIllo").addEventListener("click", () => $("fileIllo").click());
-$("fileIllo").addEventListener("change", () => { const f = $("fileIllo").files && $("fileIllo").files[0]; $("fileIllo").value = ""; if (f) startCard(runIllustration, f); });
+$("fileIllo").addEventListener("change", () => { const f = $("fileIllo").files && $("fileIllo").files[0]; $("fileIllo").value = ""; if (f) runIllustration(f); });
 ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
-drop.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) startCard(run, f); });
-document.addEventListener("paste", (e) => { if ($("intake").hidden || gallery.open) return; const it = [...(e.clipboardData ? e.clipboardData.items : [])].find((i) => i.type.startsWith("image/")); const f = it?.getAsFile(); if (f) startCard(run, f); });
+drop.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) run(f); });
+document.addEventListener("paste", (e) => { if ($("intake").hidden) return; const it = [...(e.clipboardData ? e.clipboardData.items : [])].find((i) => i.type.startsWith("image/")); if (it) run(it.getAsFile()); });
 
-let deb = null;
-function flushRender() {
-  if (deb === null) return;
-  clearTimeout(deb);
-  deb = null;
-  render();
-}
-function rerender() { clearTimeout(deb); deb = setTimeout(flushRender, 120); }
-let captionLoad = Promise.resolve();
-function refreshCaption() {
-  rerender();
-  const text = $("fCaption").value.trim();
-  const font = $("fCaptionFont").value;
-  const card = activeCard;
-  if (!text || !document.fonts) { captionLoad = Promise.resolve(); return; }
-  const [, family] = CAPTION_FONTS[font] || CAPTION_FONTS.sans;
-  captionLoad = document.fonts.load(`600 44px ${family}`, text).then(() => {
-    if (card === activeCard && text === $("fCaption").value.trim() && font === $("fCaptionFont").value) rerender();
-  }).catch(() => {});
-}
-$("fCaption").addEventListener("input", refreshCaption);
-$("fCaptionFont").addEventListener("change", refreshCaption);
+let deb = null; const rerender = () => { clearTimeout(deb); deb = setTimeout(render, 120); };
 ["fSeries", "fPlace", "fCoord", "fWords", "fYear"].forEach((id) => $(id).addEventListener("input", rerender));
 $("fSeries").addEventListener("change", () => store.set("series", $("fSeries").value.trim()));
 $("fDensity").addEventListener("input", () => { S.density = +$("fDensity").value; S.geo = rebuild(S.px, S.seg, S.pal, { density: S.density, subject: S.reading && S.reading.subject }); rerender(); });
@@ -1558,37 +1255,21 @@ $("fCut").addEventListener("change", () => {
   S.geo = rebuild(S.px, S.seg, S.pal, { density: S.density, subject: S.reading && S.reading.subject }); render();
 });
 $("bVary").addEventListener("click", () => { S.seed = (Math.random() * 1e9) | 0; render(); });
-$("bNew").addEventListener("click", async () => {
-  const card = activeCard;
-  await Promise.race([captionLoad, sleep(1200)]);
-  if (card !== activeCard) return;
-  flushRender();
-  activeCard = null;
-  store.set("no", String(counter() + 1)); setNo(counter()); show("intake");
-});
+$("bNew").addEventListener("click", () => { store.set("no", String(counter() + 1)); setNo(counter()); show("intake"); });
 $("fKey").value = store.get("key", "");
 $("fKey").addEventListener("change", () => { store.set("key", $("fKey").value.trim()); $("keyNote").textContent = $("fKey").value.trim() ? "저장했어요. 다음 사진부터 AI 엔진을 시도해요. claude.ai 미리보기에서는 외부 API가 막혀 있어서, 저장소의 index.html을 직접 열었을 때만 작동해요." : "키를 지웠어요."; });
 
 let downloads = null;
 if (window.claude && typeof window.claude.use === "function") window.claude.use("downloads").then((d) => { downloads = d; }).catch(() => {});
-async function downloadPng(blob, name) {
-  if (!blob) { toast("PNG를 만들지 못했어요. 다시 시도해 주세요."); return; }
+$("bSave").addEventListener("click", async () => {
+  const no = String(counter()).padStart(2, "0"); const name = `postcard-${no}.png`;
+  const blob = await new Promise((r) => $("out").toBlob(r, "image/png"));
   if (downloads) {
     try { await downloads.save({ filename: name, data: blob }); toast("저장했어요"); }
     catch (e) { if (e && e.code !== "declined") toast("여기서는 저장할 수 없어요. 엽서 이미지를 길게 눌러 저장해 주세요."); }
     return;
   }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
-}
-$("bSave").addEventListener("click", async () => {
-  const card = activeCard;
-  await Promise.race([captionLoad, sleep(1200)]);
-  if (card !== activeCard) return;
-  flushRender();
-  const no = String(counter()).padStart(2, "0");
-  await downloadPng(await canvasBlob($("out")), `postcard-${no}.png`);
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
 });
 </script>
 <!--APP-END-->
